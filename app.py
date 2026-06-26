@@ -12,6 +12,10 @@ from agents.sentry import SentryAgent
 from agents.architect import ArchitectAgent
 from agents.security_guard import SecurityGuardAgent
 
+# Initialize UI Theme setting
+if "theme" not in st.session_state:
+    st.session_state.theme = "Dark"
+
 # Configure page settings
 st.set_page_config(
     page_title="AetherDB Dashboard",
@@ -21,130 +25,265 @@ st.set_page_config(
 )
 
 # Custom CSS for modern glassmorphism/dark-theme aesthetics
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
-    
-    /* Global Styles */
-    .stApp {
-        background-color: #0b0e14;
-        font-family: 'Outfit', sans-serif;
-    }
-    h1, h2, h3, h4, h5, h6 {
-        font-family: 'Outfit', sans-serif !important;
-        font-weight: 600 !important;
-    }
-    .main {
-        background-color: #0b0e14;
-        color: #c9d1d9;
-    }
-    
-    /* Glassmorphic Metrics */
-    div[data-testid="metric-container"] {
-        background: linear-gradient(145deg, #121824 0%, #0b0e14 100%);
-        border: 1px solid #1f2937;
-        border-radius: 12px;
-        padding: 18px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    div[data-testid="metric-container"]:hover {
-        transform: translateY(-4px);
-        border-color: #3b82f6;
-        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
-    }
-    div[data-testid="stMetricValue"] {
-        font-family: 'Outfit', sans-serif;
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #3b82f6;
-        background: linear-gradient(90deg, #60a5fa, #3b82f6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    div[data-testid="stMetricLabel"] {
-        font-family: 'Outfit', sans-serif;
-        font-size: 0.9rem;
-        font-weight: 500;
-        color: #9ca3af;
-    }
-    
-    /* Modern Premium Cards */
-    .card {
-        background: linear-gradient(135deg, #111827 0%, #0b0f19 100%);
-        border: 1px solid #1f2937;
-        border-radius: 14px;
-        padding: 22px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .card:hover {
-        border-color: rgba(59, 130, 246, 0.3);
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.08);
-        transform: translateY(-2px);
-    }
-    
-    /* Badges */
-    .badge-ok {
-        background: rgba(16, 185, 129, 0.15) !important;
-        color: #10b981 !important;
-        border: 1px solid rgba(16, 185, 129, 0.3) !important;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.75rem;
-        letter-spacing: 0.05em;
-        display: inline-block;
-    }
-    .badge-slow {
-        background: rgba(239, 68, 68, 0.15) !important;
-        color: #ef4444 !important;
-        border: 1px solid rgba(239, 68, 68, 0.3) !important;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.75rem;
-        letter-spacing: 0.05em;
-        display: inline-block;
-    }
-    .badge-alert {
-        background: rgba(245, 158, 11, 0.15) !important;
-        color: #f59e0b !important;
-        border: 1px solid rgba(245, 158, 11, 0.3) !important;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.75rem;
-        letter-spacing: 0.05em;
-        display: inline-block;
-    }
-    
-    /* Agent Headers */
-    .agent-header {
-        font-family: 'Outfit', sans-serif;
-        font-weight: 700;
-        font-size: 1.1rem;
-        color: #f3f4f6;
-        margin-bottom: 12px;
-        border-bottom: 1px solid #1f2937;
-        padding-bottom: 8px;
-        letter-spacing: 0.03em;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    /* Monospace Code font */
-    code, pre {
-        font-family: 'JetBrains Mono', monospace !important;
-        background-color: #070a0f !important;
-        border: 1px solid #1f2937 !important;
-        color: #e5e7eb !important;
-        border-radius: 6px;
-    }
-    </style>
-""", unsafe_allow_html=True)
+if st.session_state.theme == "Dark":
+    st.markdown("""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        /* Global Styles */
+        .stApp {
+            background-color: #0b0e14;
+            font-family: 'Outfit', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Outfit', sans-serif !important;
+            font-weight: 600 !important;
+        }
+        .main {
+            background-color: #0b0e14;
+            color: #c9d1d9;
+        }
+        
+        /* Glassmorphic Metrics */
+        div[data-testid="metric-container"] {
+            background: linear-gradient(145deg, #121824 0%, #0b0e14 100%);
+            border: 1px solid #1f2937;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        div[data-testid="metric-container"]:hover {
+            transform: translateY(-4px);
+            border-color: #3b82f6;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+        }
+        div[data-testid="stMetricValue"] {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #3b82f6;
+            background: linear-gradient(90deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        div[data-testid="stMetricLabel"] {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #9ca3af;
+        }
+        
+        /* Modern Premium Cards */
+        .card {
+            background: linear-gradient(135deg, #111827 0%, #0b0f19 100%);
+            border: 1px solid #1f2937;
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .card:hover {
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        /* Badges */
+        .badge-ok {
+            background: rgba(16, 185, 129, 0.15) !important;
+            color: #10b981 !important;
+            border: 1px solid rgba(16, 185, 129, 0.3) !important;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            display: inline-block;
+        }
+        .badge-slow {
+            background: rgba(239, 68, 68, 0.15) !important;
+            color: #ef4444 !important;
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            display: inline-block;
+        }
+        .badge-alert {
+            background: rgba(245, 158, 11, 0.15) !important;
+            color: #f59e0b !important;
+            border: 1px solid rgba(245, 158, 11, 0.3) !important;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            display: inline-block;
+        }
+        
+        /* Agent Headers */
+        .agent-header {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #f3f4f6;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #1f2937;
+            padding-bottom: 8px;
+            letter-spacing: 0.03em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Monospace Code font */
+        code, pre {
+            font-family: 'JetBrains Mono', monospace !important;
+            background-color: #070a0f !important;
+            border: 1px solid #1f2937 !important;
+            color: #e5e7eb !important;
+            border-radius: 6px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        /* Global Styles */
+        .stApp {
+            background-color: #f8fafc;
+            font-family: 'Outfit', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Outfit', sans-serif !important;
+            font-weight: 600 !important;
+            color: #0f172a !important;
+        }
+        .main {
+            background-color: #f8fafc;
+            color: #334155;
+        }
+        
+        /* Glassmorphic Metrics */
+        div[data-testid="metric-container"] {
+            background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 4px 15px rgba(148, 163, 184, 0.1);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        div[data-testid="metric-container"]:hover {
+            transform: translateY(-4px);
+            border-color: #2563eb;
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.15);
+        }
+        div[data-testid="stMetricValue"] {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #2563eb;
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        div[data-testid="stMetricLabel"] {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #64748b;
+        }
+        
+        /* Modern Premium Cards */
+        .card {
+            background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(148, 163, 184, 0.1);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .card:hover {
+            border-color: rgba(37, 99, 235, 0.3);
+            box-shadow: 0 8px 30px rgba(148, 163, 184, 0.15), 0 0 15px rgba(37, 99, 235, 0.05);
+            transform: translateY(-2px);
+        }
+        
+        /* Badges */
+        .badge-ok {
+            background: rgba(16, 185, 129, 0.1) !important;
+            color: #059669 !important;
+            border: 1px solid rgba(16, 185, 129, 0.2) !important;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            display: inline-block;
+        }
+        .badge-slow {
+            background: rgba(239, 68, 68, 0.1) !important;
+            color: #dc2626 !important;
+            border: 1px solid rgba(239, 68, 68, 0.2) !important;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            display: inline-block;
+        }
+        .badge-alert {
+            background: rgba(245, 158, 11, 0.1) !important;
+            color: #d97706 !important;
+            border: 1px solid rgba(245, 158, 11, 0.2) !important;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            display: inline-block;
+        }
+        
+        /* Agent Headers */
+        .agent-header {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 8px;
+            letter-spacing: 0.03em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Monospace Code font */
+        code, pre {
+            font-family: 'JetBrains Mono', monospace !important;
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #0f172a !important;
+            border-radius: 6px;
+        }
+        
+        /* Text overrides for Light mode card contents */
+        .card p, .card b, .card span {
+            color: #334155 !important;
+        }
+        .card h4 {
+            color: #0f172a !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
 
 # Initialize Session State variables if not present
@@ -189,6 +328,21 @@ with st.sidebar:
             
     st.markdown("---")
     
+    # Interface Preferences
+    st.markdown("### Interface Preferences")
+    theme_mode = st.selectbox(
+        "🎨 UI Theme",
+        ["Dark Mode 🌙", "Light Mode ☀️"],
+        index=0 if st.session_state.theme == "Dark" else 1,
+        help="Switch between Light and Dark interface styles."
+    )
+    new_theme = "Dark" if "Dark" in theme_mode else "Light"
+    if new_theme != st.session_state.theme:
+        st.session_state.theme = new_theme
+        st.rerun()
+        
+    st.markdown("---")
+    
     # Active Indexes Registry View
     st.markdown("### Database Index Registry")
     indexes = db_instance.get_existing_indexes()
@@ -212,21 +366,153 @@ with st.sidebar:
         )
 
 # ----------------- MAIN LAYOUT -----------------
+# Theme-based color variables for custom HTML elements
+if st.session_state.theme == "Dark":
+    text_primary = "#f0f6fc"
+    text_secondary = "#8b949e"
+    pipeline_bg = "#111827"
+    pipeline_border = "#1f2937"
+    step_connector_idle = "#1f2937"
+    title_gradient_start = "#3b82f6"
+    title_gradient_end = "#60a5fa"
+else:
+    text_primary = "#0f172a"
+    text_secondary = "#64748b"
+    pipeline_bg = "#ffffff"
+    pipeline_border = "#e2e8f0"
+    step_connector_idle = "#e2e8f0"
+    title_gradient_start = "#2563eb"
+    title_gradient_end = "#3b82f6"
+
 col_logo, col_title = st.columns([1, 6], vertical_alignment="center")
 with col_logo:
     st.image("logo.png", width=95)
 with col_title:
     st.markdown(
-        """
-        <h1 style='color:#f0f6fc; font-family: "Outfit", sans-serif; font-size: 3rem; font-weight: 700; margin-top: 0; margin-bottom: 0; background: linear-gradient(90deg, #3b82f6, #60a5fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>
+        f"""
+        <h1 style='color:{text_primary}; font-family: "Outfit", sans-serif; font-size: 3rem; font-weight: 700; margin-top: 0; margin-bottom: 0; background: linear-gradient(90deg, {title_gradient_start}, {title_gradient_end}); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>
             AetherDB
         </h1>
-        <p style='color:#9ca3af; font-family: "Outfit", sans-serif; font-size: 1.25rem; font-weight: 400; margin-top: 5px; margin-bottom: 0;'>
+        <p style='color:{text_secondary}; font-family: "Outfit", sans-serif; font-size: 1.25rem; font-weight: 400; margin-top: 5px; margin-bottom: 0;'>
             Autonomous Performance Tuning & Proactive Safety for Modern Datastores
         </p>
         """,
         unsafe_allow_html=True
     )
+
+# 1. Welcome & Onboarding Card (Dumb-User Friendly)
+with st.expander("📖 Quick Start & Swarm Agent Guide (New here? Click to read!)", expanded=True if not st.session_state.telemetry_history else False):
+    st.markdown(
+        f"""
+        <div style="background-color: {pipeline_bg}; border: 1px solid {pipeline_border}; border-radius: 10px; padding: 15px; margin-bottom: 10px;">
+            <h3 style="margin-top: 0; color: {text_primary};">Welcome to AetherDB! 🚀</h3>
+            <p style="color: {text_secondary}; font-size: 0.95rem; line-height: 1.5; margin-bottom: 12px;">
+                AetherDB is an intelligent, self-healing database operations system. It automatically intercepts slow queries, 
+                designs safe performance indexes to speed them up, audits them for security, and asks for your approval.
+            </p>
+            <h4 style="color: {text_primary}; margin-bottom: 5px; margin-top: 0;">💡 How to run this Demo in 4 Steps:</h4>
+            <ol style="color: {text_secondary}; font-size: 0.9rem; margin-top: 0; padding-left: 20px; line-height: 1.5;">
+                <li>Click <b>▶️ Start Telemetry Stream</b> in the left sidebar. This starts generating real-world database queries.</li>
+                <li>Watch the queries flow in the <b>Telemetry Live Feed</b> on the right panel.</li>
+                <li>When a slow query (> 100ms) is intercepted, the stream will pause, and the <b>Swarm Decision Hub</b> will show the agents' reasoning.</li>
+                <li>Review their work and click <b>✅ Approve & Deploy Index</b> to instantly speed up the database.</li>
+            </ol>
+            <h4 style="color: {text_primary}; margin-bottom: 5px; margin-top: 10px;">🤖 Meet your Autonomous Swarm Agents:</h4>
+            <ul style="color: {text_secondary}; font-size: 0.9rem; margin-top: 0; padding-left: 20px; line-height: 1.5;">
+                <li>🚨 <b>Sentry Agent</b>: The watchdog. Constantly monitors database query latency and flags performance anomalies.</li>
+                <li>📐 <b>Architect Agent</b>: The optimizer. Analyzes the slow query execution bottleneck and proposes a tailored speed index.</li>
+                <li>🛡️ <b>Security Guard Agent</b>: The firewall. Audits the proposed indexing DDL against security skills to block harmful commands (like deleting tables) and locking operations.</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+# 2. Visual Pipeline Tracker
+st.markdown(f"<h3 style='color:{title_gradient_start}; margin-top: 15px; font-family: \"Outfit\", sans-serif;'>Real-Time Agent Swarm Status</h3>", unsafe_allow_html=True)
+
+proposal = st.session_state.pending_proposal
+
+# Step configurations
+step_color_1 = "#10b981"
+status_text_1 = "Monitoring Latency 🟢"
+
+if proposal:
+    step_connector_1 = "#10b981"
+    step_color_2 = "#10b981"
+    status_text_2 = "Proposing Index 🟢"
+    
+    # Run safety validation
+    safety_report = st.session_state.swarm_security.validate_proposal(proposal)
+    step_connector_2 = "#10b981"
+    if safety_report["approved"]:
+        step_color_3 = "#10b981"
+        status_text_3 = "Audit Passed 🟢"
+        step_connector_3 = "#f59e0b"
+        step_color_4 = "#f59e0b"
+        status_text_4 = "Decision Pending 🟡"
+    else:
+        step_color_3 = "#ef4444"
+        status_text_3 = "Blocked 🔴"
+        step_connector_3 = step_connector_idle
+        step_color_4 = "#64748b"
+        status_text_4 = "Idle ⚪"
+else:
+    step_connector_1 = step_connector_idle
+    step_color_2 = "#64748b"
+    status_text_2 = "Idle ⚪"
+    
+    step_connector_2 = step_connector_idle
+    step_color_3 = "#64748b"
+    status_text_3 = "Idle ⚪"
+    
+    step_connector_3 = step_connector_idle
+    step_color_4 = "#64748b"
+    status_text_4 = "Idle ⚪"
+
+# Render custom visual pipeline HTML
+st.markdown(
+    f"""
+    <div style="display: flex; justify-content: space-between; align-items: center; background: {pipeline_bg}; border: 1px solid {pipeline_border}; border-radius: 12px; padding: 18px 25px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+        <!-- Step 1: Sentry -->
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="background: {step_color_1}; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">1</span>
+            <div>
+                <div style="font-weight: 600; font-size: 0.9rem; color: {text_primary};">Sentry Agent</div>
+                <div style="font-size: 0.75rem; color: #10b981; font-weight: 500;">{status_text_1}</div>
+            </div>
+        </div>
+        <div style="flex-grow: 1; height: 3px; background: {step_connector_1}; margin: 0 15px; border-radius: 2px;"></div>
+        <!-- Step 2: Architect -->
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="background: {step_color_2}; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">2</span>
+            <div>
+                <div style="font-weight: 600; font-size: 0.9rem; color: {text_primary};">Architect Agent</div>
+                <div style="font-size: 0.75rem; color: {text_secondary}; font-weight: 500;">{status_text_2}</div>
+            </div>
+        </div>
+        <div style="flex-grow: 1; height: 3px; background: {step_connector_2}; margin: 0 15px; border-radius: 2px;"></div>
+        <!-- Step 3: Security Guard -->
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="background: {step_color_3}; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">3</span>
+            <div>
+                <div style="font-weight: 600; font-size: 0.9rem; color: {text_primary};">Security Guard</div>
+                <div style="font-size: 0.75rem; color: {text_secondary}; font-weight: 500;">{status_text_3}</div>
+            </div>
+        </div>
+        <div style="flex-grow: 1; height: 3px; background: {step_connector_3}; margin: 0 15px; border-radius: 2px;"></div>
+        <!-- Step 4: Operator -->
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="background: {step_color_4}; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">4</span>
+            <div>
+                <div style="font-weight: 600; font-size: 0.9rem; color: {text_primary};">Human Operator</div>
+                <div style="font-size: 0.75rem; color: {text_secondary}; font-weight: 500;">{status_text_4}</div>
+            </div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # Top Metrics Row
 metrics_cols = st.columns(4)
@@ -349,7 +635,26 @@ with col_left:
     st.markdown("<h3 style='color:#58a6ff;'>Chaos Engineering Sandbox</h3>", unsafe_allow_html=True)
     st.markdown("<p style='color:#8b949e;'>Simulate custom operations to test the Security Guard Agent's safety validation skill directly.</p>", unsafe_allow_html=True)
     
-    sandbox_sql = st.text_area("Type SQL Optimization statement to evaluate:", value="CREATE INDEX CONCURRENTLY idx_users_email ON users (email);")
+    # Initialize sandbox preset value in session state if not present
+    if "sandbox_sql_val" not in st.session_state:
+        st.session_state.sandbox_sql_val = "CREATE INDEX CONCURRENTLY idx_users_email ON users (email);"
+        
+    st.markdown("💡 **1-Click Test Presets (Dumb User Friendly):**")
+    col_p1, col_p2, col_p3 = st.columns(3)
+    with col_p1:
+        if st.button("✅ Test Safe Index", help="Propose a safe, concurrent index creation", use_container_width=True):
+            st.session_state.sandbox_sql_val = "CREATE INDEX CONCURRENTLY idx_users_email ON users (email);"
+            st.rerun()
+    with col_p2:
+        if st.button("🚨 Test SQL Injection", help="Attempt to inject a destructive DROP TABLE command", use_container_width=True):
+            st.session_state.sandbox_sql_val = "CREATE INDEX CONCURRENTLY idx_users_email ON users (email); DROP TABLE transactions;"
+            st.rerun()
+    with col_p3:
+        if st.button("🔒 Test Table Lock", help="Attempt to create an index without the CONCURRENTLY keyword, which locks the database for writes", use_container_width=True):
+            st.session_state.sandbox_sql_val = "CREATE INDEX idx_users_email ON users (email);"
+            st.rerun()
+            
+    sandbox_sql = st.text_area("Type or edit SQL statement to evaluate:", value=st.session_state.sandbox_sql_val)
     
     if st.button("🔒 Run Security Guard Audit", use_container_width=True):
         mock_payload = {
@@ -378,13 +683,13 @@ with col_right:
         for q in reversed(st.session_state.telemetry_history[-8:]):
             badge = "<span class='badge-slow'>SLOW</span>" if q["status"] == "SLOW" else "<span class='badge-ok'>OK</span>"
             st.markdown(
-                f"<div style='border: 1px solid #21262d; border-radius: 6px; padding: 10px; margin-bottom: 8px; background-color: #0d1117;'>"
+                f"<div style='border: 1px solid {pipeline_border}; border-radius: 6px; padding: 10px; margin-bottom: 8px; background-color: {pipeline_bg};'>"
                 f"<div style='display:flex; justify-content:space-between;'>"
-                f"<span style='color:#8b949e; font-size:0.8rem;'>ID: {q['query_id']} | {datetime.fromtimestamp(q['timestamp']).strftime('%H:%M:%S')}</span>"
+                f"<span style='color:{text_secondary}; font-size:0.8rem;'>ID: {q['query_id']} | {datetime.fromtimestamp(q['timestamp']).strftime('%H:%M:%S')}</span>"
                 f"{badge}"
                 f"</div>"
-                f"<div style='margin-top:5px; font-family: monospace; font-size:0.9rem; color:#f0f6fc; overflow-x:auto;'>{q['sql']}</div>"
-                f"<div style='margin-top:5px; color:#58a6ff; font-size:0.8rem;'>Latency: {q['execution_time_ms']} ms</div>"
+                f"<div style='margin-top:5px; font-family: monospace; font-size:0.9rem; color:{text_primary}; overflow-x:auto;'>{q['sql']}</div>"
+                f"<div style='margin-top:5px; color:#3b82f6; font-size:0.8rem;'>Latency: {q['execution_time_ms']} ms</div>"
                 f"</div>",
                 unsafe_allow_html=True
             )
