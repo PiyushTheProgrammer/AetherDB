@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from mcp.server import db_instance
 
 class ArchitectAgent:
@@ -10,7 +10,7 @@ class ArchitectAgent:
     def __init__(self):
         pass
 
-    def analyze_slow_query(self, alert_payload: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze_slow_query(self, alert_payload: Dict[str, Any], db_instance_override: Optional[Any] = None) -> Dict[str, Any]:
         """
         Receives an alert from the Sentry, pulls the execution plan from the database engine,
         analyzes the plan, and formulates a performance index proposal.
@@ -18,7 +18,8 @@ class ArchitectAgent:
         sql = alert_payload["sql"]
         
         # Pull the live execution plan from the DB engine (simulating an MCP tool call)
-        plan_analysis = db_instance.explain_query(sql)
+        active_db = db_instance_override if db_instance_override is not None else db_instance
+        plan_analysis = active_db.explain_query(sql)
         plan_tree = plan_analysis.get("plan_tree", {})
         bottleneck = plan_analysis.get("bottleneck_detected", "No specific bottleneck detected.")
         potential_fix = plan_analysis.get("potential_fix", "")

@@ -247,5 +247,256 @@ class MockPostgreSQLDatabase:
             "error": "Only CREATE INDEX operations are permitted through this interface."
         }
 
+class RealPostgreSQLDatabase:
+    """
+    A database operations adapter that connects in real-time to a live
+    PostgreSQL database. It dynamically queries catalog metadata for tables,
+    indexes, and column sizes, runs real EXPLAIN plans, and executes index DDL commands.
+    """
+    def __init__(self, connection_uri: str):
+        import psycopg2
+        import psycopg2.extras
+        self.connection_uri = connection_uri
+        # Connect to the real database
+        self.conn = psycopg2.connect(connection_uri)
+        # Enable autocommit so DDLs like CREATE INDEX CONCURRENTLY can execute
+        self.conn.autocommit = True
+        self.executed_optimizations: List[Dict[str, Any]] = []
+
+    def get_existing_indexes(self) -> List[Dict[str, Any]]:
+        """Queries pg_indexes to fetch active indexes in the public schema."""
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT indexname, tablename, indexdef 
+                FROM pg_indexes 
+                WHERE schemaname = 'public';
+            """)
+            rows = cursor.fetchall()
+            cursor.close()
+            
+            indexes = []
+            for row in rows:
+                name, table, definition = row
+                # Simple parsing of columns from indexdef: e.g., ON table (col1, col2)
+                cols = []
+                col_match = re.search(r"\((.*?)\)", definition)
+                if col_match:
+                    cols = [c.strip().strip('"') for c in col_match.group(1).split(",")]
+                indexes.append({
+                    "name": name,
+                    "table": table,
+                    "columns": cols
+                })
+            return indexes
+        except Exception as e:
+            if not cursor.closed:
+                cursor.close()
+            # Return empty on error
+            return []
+
+    @property
+    def tables(self) -> Dict[str, Any]:
+        """
+        Queries information_schema and pg_stat_user_tables 
+        to dynamically return real table schema and live row counts.
+        """
+        cursor = self.conn.cursor()
+        try:
+            # 1. Fetch tables and columns
+            cursor.execute("""
+                SELECT table_name, column_name 
+                FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                ORDER BY table_name, ordinal_position;
+            """)
+            col_rows = cursor.fetchall()
+            
+            # 2. Fetch row counts
+            cursor.execute("""
+                SELECT relname AS table_name, n_live_tup AS rows_count 
+                FROM pg_stat_user_tables;
+            """)
+            count_rows = cursor.fetchall()
+            cursor.close()
+            
+            row_counts = {r[0]: max(0, r[1]) for r in count_rows}
+            
+            tables_schema = {}
+            for row in col_rows:
+                table_name, col_name = row
+                if table_name not in tables_schema:
+                    tables_schema[table_name] = {
+                        "columns": [],
+                        "rows_count": row_counts.get(table_name, 0)
+                    }
+                tables_schema[table_name]["columns"].append(col_name)
+            return tables_schema
+        except Exception as e:
+            if not cursor.closed:
+                cursor.close()
+            return {}
+
+    def parse_query_target(self, query: str) -> Dict[str, Any]:
+        """
+        Extracts table and columns from SQL query templates
+        by matching against real tables and columns.
+        """
+        query_clean = query.strip().replace("\n", " ").lower()
+        result = {"table": "unknown", "columns": [], "type": "unknown"}
+        
+        real_tables = self.tables
+        
+        if query_clean.startswith("select") or "select " in query_clean:
+            result["type"] = "select"
+            # Identify the main table from real tables
+            for table in real_tables.keys():
+                if f"from {table}" in query_clean or f"join {table}" in query_clean:
+                    result["table"] = table
+                    break
+            
+            # Simple column extraction from WHERE/JOIN clauses based on table columns
+            if result["table"] != "unknown":
+                table_cols = real_tables[result["table"]]["columns"]
+                for col in table_cols:
+                    # Check if column is in the query (with word boundary to avoid partial match)
+                    if re.search(rf"\b{col}\b", query_clean):
+                        # Avoid adding PK 'id' as the main filter column if possible
+                        if col != "id" or not result["columns"]:
+                            result["columns"].append(col)
+                            
+        return result
+
+    def explain_query(self, query: str) -> Dict[str, Any]:
+        """
+        Executes a real EXPLAIN (FORMAT JSON) on the connected database.
+        Parses the JSON result to detect bottlenecks and build optimization proposals.
+        """
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute(f"EXPLAIN (FORMAT JSON) {query}")
+            explain_result = cursor.fetchone()
+            cursor.close()
+            
+            if not explain_result or not explain_result[0]:
+                return {
+                    "query": query,
+                    "execution_time_ms": 0.0,
+                    "plan_tree": {},
+                    "bottleneck_detected": "Failed to retrieve explain plan.",
+                    "potential_fix": "None."
+                }
+                
+            plan_data = explain_result[0][0] # JSON output from explain
+            plan_tree = plan_data.get("Plan", {})
+            
+            total_cost = plan_tree.get("Total Cost", 0.0)
+            startup_cost = plan_tree.get("Startup Cost", 0.0)
+            plan_rows = plan_tree.get("Plan Rows", 0)
+            
+            # Identify sequential scans on tables
+            bottleneck = "None. Query is fully optimized."
+            potential_fix = "None needed."
+            
+            def find_bottlenecks(node: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+                node_type = node.get("Node Type", "")
+                relation = node.get("Relation Name", "")
+                
+                # A Seq Scan on a table with > 1000 rows is a bottleneck
+                if node_type == "Seq Scan" and relation:
+                    tables_schema = self.tables
+                    rows = tables_schema.get(relation, {}).get("rows_count", 0)
+                    if rows > 1000:
+                        # Extract filter columns if present
+                        filter_cond = node.get("Filter", "")
+                        columns = []
+                        if filter_cond:
+                            for c in filter_cond.replace("(", "").replace(")", "").replace("'", "").split("="):
+                                c_clean = c.strip().split(".")[-1] # strip table alias
+                                if c_clean in tables_schema.get(relation, {}).get("columns", []):
+                                    columns.append(c_clean)
+                        return {
+                            "table": relation,
+                            "columns": columns
+                        }
+                        
+                for child in node.get("Plans", []):
+                    res = find_bottlenecks(child)
+                    if res:
+                        return res
+                return None
+                
+            bt = find_bottlenecks(plan_tree)
+            
+            if bt and bt["table"] != "unknown":
+                table = bt["table"]
+                columns = bt["columns"]
+                if not columns:
+                    parsed = self.parse_query_target(query)
+                    if parsed["table"] == table:
+                        columns = parsed["columns"]
+                
+                if not columns:
+                    columns = ["id"]
+                    
+                bottleneck = f"Sequential Scan on relation '{table}' due to missing index."
+                cols_str = ", ".join(columns)
+                potential_fix = f"CREATE INDEX CONCURRENTLY idx_{table}_{'_'.join(columns)} ON {table} ({cols_str});"
+                execution_time = 10.0 + (total_cost / 10.0)
+            else:
+                execution_time = 0.5 + (total_cost / 100.0)
+                
+            return {
+                "query": query,
+                "execution_time_ms": round(execution_time, 2),
+                "plan_tree": plan_tree,
+                "bottleneck_detected": bottleneck,
+                "potential_fix": potential_fix
+            }
+        except Exception as e:
+            if not cursor.closed:
+                cursor.close()
+            return {
+                "query": query,
+                "execution_time_ms": 0.0,
+                "plan_tree": {},
+                "bottleneck_detected": f"Error running explain: {str(e)}",
+                "potential_fix": "None."
+            }
+
+    def execute_ddl(self, sql_command: str) -> Dict[str, Any]:
+        """Executes the DDL command directly on the active PostgreSQL database."""
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute(sql_command)
+            cursor.close()
+            
+            log_entry = {
+                "sql": sql_command,
+                "status": "Applied Successfully"
+            }
+            self.executed_optimizations.append(log_entry)
+            
+            return {
+                "success": True,
+                "message": "DDL statement executed successfully on the active database.",
+                "details": log_entry
+            }
+        except Exception as e:
+            if not cursor.closed:
+                cursor.close()
+            return {
+                "success": False,
+                "error": f"Failed to execute DDL: {str(e)}"
+            }
+
+    def close(self):
+        """Closes the active database connection."""
+        try:
+            self.conn.close()
+        except:
+            pass
+
 # Singleton DB Server Instance for telemetry simulation
 db_instance = MockPostgreSQLDatabase()
+

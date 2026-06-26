@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 
 # Import Swarm components
-from mcp.server import db_instance
+from mcp.server import db_instance, RealPostgreSQLDatabase
 from mcp.telemetry_generator import TelemetryGenerator
 from agents.sentry import SentryAgent
 from agents.architect import ArchitectAgent
@@ -411,6 +411,8 @@ if "pending_proposal" not in st.session_state:
     st.session_state.pending_proposal = None
 if "streaming_active" not in st.session_state:
     st.session_state.streaming_active = False
+if "db_instance" not in st.session_state:
+    st.session_state.db_instance = db_instance
 
 # Initialize Swarm components (Cached in session)
 if "swarm_sentry" not in st.session_state:
@@ -449,16 +451,81 @@ with st.sidebar:
     
     st.markdown("---")
     
+    # Database Engine Connection (completely emoji-free, professional styling)
+    st.markdown("### Database Engine Connection")
+    db_type_options = ["Simulated Database (Mock)", "Real PostgreSQL Database"]
+    current_db_type_idx = 0
+    if isinstance(st.session_state.db_instance, RealPostgreSQLDatabase):
+        current_db_type_idx = 1
+        
+    selected_db_type = st.selectbox(
+        "Database Engine Type",
+        db_type_options,
+        index=current_db_type_idx,
+        key="db_type_selector_key"
+    )
+    
+    if selected_db_type == "Real PostgreSQL Database":
+        if not isinstance(st.session_state.db_instance, RealPostgreSQLDatabase):
+            connection_uri = st.text_input(
+                "PostgreSQL Connection URI",
+                value=st.session_state.get("db_uri_input", "postgresql://postgres:postgres@localhost:5432/postgres"),
+                help="Format: postgresql://username:password@hostname:port/database"
+            )
+            st.session_state.db_uri_input = connection_uri
+            
+            if st.button("Connect to Database", type="primary", use_container_width=True):
+                if not connection_uri.strip():
+                    st.error("Connection URI cannot be empty.")
+                else:
+                    try:
+                        with st.spinner("Connecting to PostgreSQL..."):
+                            new_db = RealPostgreSQLDatabase(connection_uri)
+                            # Verify connection by calling tables property
+                            _ = new_db.tables
+                            st.session_state.db_instance = new_db
+                            st.toast("Successfully connected to database.")
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"Connection failed: {str(e)}")
+        else:
+            st.success("Connected to Live Database")
+            raw_uri = st.session_state.db_instance.connection_uri
+            masked_uri = raw_uri
+            import re
+            match = re.match(r"(postgresql://.*?):(.*?)@(.*?)$", raw_uri)
+            if match:
+                masked_uri = f"{match.group(1)}:******@{match.group(3)}"
+            st.text(f"URI: {masked_uri}")
+            
+            if st.button("Disconnect Database", use_container_width=True):
+                st.session_state.db_instance.close()
+                st.session_state.db_instance = db_instance
+                st.toast("Disconnected. Reverted to simulated database.")
+                st.rerun()
+    else:
+        if isinstance(st.session_state.db_instance, RealPostgreSQLDatabase):
+            st.session_state.db_instance.close()
+            st.session_state.db_instance = db_instance
+            st.toast("Reverted to simulated database.")
+            st.rerun()
+        st.info("Using simulated in-memory database schema.")
+        
+    st.markdown("---")
+    
     # Live Stream Toggle
     st.markdown("### Telemetry Stream Control")
-    if st.session_state.streaming_active:
-        if st.button("Pause Telemetry Stream", use_container_width=True):
-            st.session_state.streaming_active = False
-            st.rerun()
+    if isinstance(st.session_state.db_instance, RealPostgreSQLDatabase):
+        st.info("Telemetry stream is only available for the simulated database. Use the Manual Query Optimizer on the main dashboard to optimize your live database queries.")
     else:
-        if st.button("Start Telemetry Stream", type="primary", use_container_width=True):
-            st.session_state.streaming_active = True
-            st.rerun()
+        if st.session_state.streaming_active:
+            if st.button("Pause Telemetry Stream", use_container_width=True):
+                st.session_state.streaming_active = False
+                st.rerun()
+        else:
+            if st.button("Start Telemetry Stream", type="primary", use_container_width=True):
+                st.session_state.streaming_active = True
+                st.rerun()
             
     st.markdown("---")
     
@@ -479,7 +546,7 @@ with st.sidebar:
     
     # Active Indexes Registry View
     st.markdown("### Database Index Registry")
-    indexes = db_instance.get_existing_indexes()
+    indexes = st.session_state.db_instance.get_existing_indexes()
     if indexes:
         for idx in indexes:
             st.markdown(
@@ -487,17 +554,22 @@ with st.sidebar:
                 f"Table: `{idx['table']}` | Columns: `{', '.join(idx['columns'])}`"
             )
     else:
-        st.info("No optimization indexes active.")
+        st.info("No active indexes found.")
         
     st.markdown("---")
     
     # DB Engine Stats
-    st.markdown("### Simulated Schema Sizes")
-    for tbl_name, tbl_info in db_instance.tables.items():
-        st.markdown(
-            f"**`{tbl_name}`**: {tbl_info['rows_count']:,} rows  \n"
-            f"Columns: `{', '.join(tbl_info['columns'])}`"
-        )
+    schema_title = "Active Database Schema" if isinstance(st.session_state.db_instance, RealPostgreSQLDatabase) else "Simulated Schema Sizes"
+    st.markdown(f"### {schema_title}")
+    tables_info = st.session_state.db_instance.tables
+    if tables_info:
+        for tbl_name, tbl_info in tables_info.items():
+            st.markdown(
+                f"**`{tbl_name}`**: {tbl_info['rows_count']:,} rows  \n"
+                f"Columns: `{', '.join(tbl_info['columns'])}`"
+            )
+    else:
+        st.info("No tables found in public schema.")
 
 # ----------------- MAIN LAYOUT -----------------
 # Theme-based color variables for custom HTML elements
@@ -623,7 +695,7 @@ metrics_cols = st.columns(4)
 
 total_queries = len(st.session_state.telemetry_history)
 slow_queries = sum(1 for q in st.session_state.telemetry_history if q["status"] == "SLOW")
-optimization_count = len(db_instance.executed_optimizations)
+optimization_count = len(st.session_state.db_instance.executed_optimizations)
 
 # Compute real-time average latency
 if st.session_state.telemetry_history:
@@ -714,7 +786,7 @@ with col_left:
             with col_btn1:
                 if st.button("Approve & Deploy Index", type="primary", use_container_width=True):
                     # Execute the optimization index
-                    result = db_instance.execute_ddl(proposal["proposed_sql"])
+                    result = st.session_state.db_instance.execute_ddl(proposal["proposed_sql"])
                     if result.get("success"):
                         st.success(result.get("message"))
                         st.session_state.pending_proposal = None
@@ -738,6 +810,52 @@ with col_left:
                 st.rerun()
     else:
         st.info("System healthy. No slow queries currently queued for swarm analysis.")
+        
+        # ----------------- MANUAL QUERY OPTIMIZER (For Live PostgreSQL) -----------------
+        if isinstance(st.session_state.db_instance, RealPostgreSQLDatabase):
+            st.markdown("---")
+            st.markdown(f"<h3 style='color:{title_color};'>Manual Query Optimizer</h3>", unsafe_allow_html=True)
+            st.markdown(f"<p style='color:{text_secondary};'>Analyze any SQL query on your connected live database. AetherDB will run a safe EXPLAIN plan, identify sequential scans, and propose a non-blocking index.</p>", unsafe_allow_html=True)
+            
+            manual_query = st.text_area(
+                "Enter SQL Query to optimize",
+                placeholder="SELECT * FROM table_name WHERE column_name = 'value';",
+                height=120,
+                key="manual_query_input"
+            )
+            
+            if st.button("Analyze & Optimize Query", type="primary", use_container_width=True):
+                if not manual_query.strip():
+                    st.warning("Please enter a SQL query to analyze.")
+                else:
+                    # 1. Proactive Safety Audit
+                    is_safe, safety_err = st.session_state.swarm_security._check_query_safety(manual_query, is_proposal=False)
+                    if not is_safe:
+                        st.error(f"Security Guard blocked this query: {safety_err}")
+                    else:
+                        with st.spinner("Analyzing query execution plan..."):
+                            # 2. Run explain plan via Architect Agent
+                            alert_payload = {
+                                "alert_id": "alert_manual",
+                                "query_id": f"q_manual_{int(time.time())}",
+                                "sql": manual_query,
+                                "execution_time_ms": 250.0,
+                                "timestamp": time.time(),
+                                "severity": "WARNING",
+                                "status": "Awaiting Swarm Analysis"
+                            }
+                            
+                            proposal_payload = st.session_state.swarm_architect.analyze_slow_query(
+                                alert_payload,
+                                db_instance_override=st.session_state.db_instance
+                            )
+                            
+                            if not proposal_payload.get("proposed_sql"):
+                                st.info("No performance bottleneck detected. The query is already optimized using existing indexes or does not benefit from index optimization.")
+                            else:
+                                st.session_state.pending_proposal = proposal_payload
+                                st.toast("Bottleneck detected. Swarm optimization proposed!")
+                                st.rerun()
         
     # --- CHAOS ENGINEERING SANDBOX (Security Demonstration) ---
     st.markdown("---")
@@ -858,7 +976,10 @@ if st.session_state.streaming_active:
     # If a slow query is intercepted, and we do not have an active proposal queued, trigger the swarm
     if sentry_alert and not st.session_state.pending_proposal:
         # Pass to Architect Agent
-        proposal_payload = st.session_state.swarm_architect.analyze_slow_query(sentry_alert)
+        proposal_payload = st.session_state.swarm_architect.analyze_slow_query(
+            sentry_alert,
+            db_instance_override=st.session_state.db_instance
+        )
         # Store as pending in session
         st.session_state.pending_proposal = proposal_payload
         # Temporarily pause stream so user can inspect and act on proposal
