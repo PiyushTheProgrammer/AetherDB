@@ -44,6 +44,62 @@ if st.session_state.theme == "Dark":
             color: #c9d1d9;
         }
         
+        /* Sidebar styling override */
+        section[data-testid="stSidebar"] {
+            background-color: #0b0e14 !important;
+            border-right: 1px solid #1f2937 !important;
+        }
+        section[data-testid="stSidebar"] *, 
+        section[data-testid="stSidebar"] p, 
+        section[data-testid="stSidebar"] span, 
+        section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] div,
+        section[data-testid="stSidebar"] li {
+            color: #c9d1d9 !important;
+        }
+        section[data-testid="stSidebar"] h1, 
+        section[data-testid="stSidebar"] h2, 
+        section[data-testid="stSidebar"] h3,
+        section[data-testid="stSidebar"] h4,
+        section[data-testid="stSidebar"] h5,
+        section[data-testid="stSidebar"] h6 {
+            color: #f0f6fc !important;
+        }
+        
+        /* Top Header styling override */
+        header[data-testid="stHeader"] {
+            background-color: rgba(11, 14, 20, 0.6) !important;
+            backdrop-filter: blur(10px) !important;
+            border-bottom: 1px solid #1f2937 !important;
+        }
+        header[data-testid="stHeader"] * {
+            color: #f0f6fc !important;
+        }
+        
+        /* Style selectboxes, expanders, and buttons inside the sidebar for dark mode */
+        section[data-testid="stSidebar"] div[data-baseweb="select"] {
+            background-color: #111827 !important;
+            border: 1px solid #1f2937 !important;
+            border-radius: 8px !important;
+        }
+        section[data-testid="stSidebar"] div[data-baseweb="select"] * {
+            color: #f0f6fc !important;
+        }
+        section[data-testid="stSidebar"] button {
+            background-color: #111827 !important;
+            border: 1px solid #1f2937 !important;
+            color: #f0f6fc !important;
+        }
+        section[data-testid="stSidebar"] button:hover {
+            border-color: #3b82f6 !important;
+            color: #3b82f6 !important;
+        }
+        section[data-testid="stSidebar"] div[data-testid="stExpander"] {
+            background-color: #111827 !important;
+            border: 1px solid #1f2937 !important;
+            border-radius: 10px !important;
+        }
+        
         /* Glassmorphic Metrics */
         div[data-testid="metric-container"] {
             background: linear-gradient(145deg, #121824 0%, #0b0e14 100%);
@@ -168,6 +224,62 @@ else:
         .main {
             background-color: #f8fafc;
             color: #334155;
+        }
+        
+        /* Sidebar styling override */
+        section[data-testid="stSidebar"] {
+            background-color: #f1f5f9 !important;
+            border-right: 1px solid #e2e8f0 !important;
+        }
+        section[data-testid="stSidebar"] *, 
+        section[data-testid="stSidebar"] p, 
+        section[data-testid="stSidebar"] span, 
+        section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] div,
+        section[data-testid="stSidebar"] li {
+            color: #334155 !important;
+        }
+        section[data-testid="stSidebar"] h1, 
+        section[data-testid="stSidebar"] h2, 
+        section[data-testid="stSidebar"] h3,
+        section[data-testid="stSidebar"] h4,
+        section[data-testid="stSidebar"] h5,
+        section[data-testid="stSidebar"] h6 {
+            color: #0f172a !important;
+        }
+        
+        /* Top Header styling override */
+        header[data-testid="stHeader"] {
+            background-color: rgba(248, 250, 252, 0.6) !important;
+            backdrop-filter: blur(10px) !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+        header[data-testid="stHeader"] * {
+            color: #0f172a !important;
+        }
+        
+        /* Style selectboxes, expanders, and buttons inside the sidebar for light mode */
+        section[data-testid="stSidebar"] div[data-baseweb="select"] {
+            background-color: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+        }
+        section[data-testid="stSidebar"] div[data-baseweb="select"] * {
+            color: #334155 !important;
+        }
+        section[data-testid="stSidebar"] button {
+            background-color: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #334155 !important;
+        }
+        section[data-testid="stSidebar"] button:hover {
+            border-color: #2563eb !important;
+            color: #2563eb !important;
+        }
+        section[data-testid="stSidebar"] div[data-testid="stExpander"] {
+            background-color: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 10px !important;
         }
         
         /* Glassmorphic Metrics */
