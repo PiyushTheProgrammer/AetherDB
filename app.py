@@ -76,28 +76,132 @@ if st.session_state.theme == "Dark":
             color: #f0f6fc !important;
         }
         
-        /* Style selectboxes, expanders, and buttons inside the sidebar for dark mode */
-        section[data-testid="stSidebar"] div[data-baseweb="select"] {
-            background-color: #111827 !important;
-            border: 1px solid #1f2937 !important;
-            border-radius: 8px !important;
+        /* Premium custom scrollbars for dark mode */
+        ::-webkit-scrollbar {
+            width: 8px !important;
+            height: 8px !important;
         }
-        section[data-testid="stSidebar"] div[data-baseweb="select"] * {
-            color: #f0f6fc !important;
+        ::-webkit-scrollbar-track {
+            background: #0b0e14 !important;
         }
-        section[data-testid="stSidebar"] button {
-            background-color: #111827 !important;
-            border: 1px solid #1f2937 !important;
-            color: #f0f6fc !important;
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937 !important;
+            border-radius: 4px !important;
         }
-        section[data-testid="stSidebar"] button:hover {
-            border-color: #3b82f6 !important;
-            color: #3b82f6 !important;
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151 !important;
         }
+        
+        /* Style expanders inside the sidebar for dark mode */
         section[data-testid="stSidebar"] div[data-testid="stExpander"] {
             background-color: #111827 !important;
             border: 1px solid #1f2937 !important;
             border-radius: 10px !important;
+        }
+        
+        /* Premium Button Styling for Dark Mode */
+        /* Secondary / standard buttons in both sidebar and main area */
+        div.stButton > button, 
+        section[data-testid="stSidebar"] button {
+            background-color: #111827 !important;
+            color: #c9d1d9 !important;
+            border: 1px solid #1f2937 !important;
+            border-radius: 8px !important;
+            font-family: 'Outfit', sans-serif !important;
+            font-weight: 500 !important;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            padding: 6px 16px !important;
+        }
+        div.stButton > button:hover, 
+        section[data-testid="stSidebar"] button:hover {
+            border-color: #3b82f6 !important;
+            color: #3b82f6 !important;
+            background-color: #1f2937 !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1) !important;
+            transform: translateY(-1px) !important;
+        }
+        div.stButton > button:active, 
+        section[data-testid="stSidebar"] button:active {
+            transform: translateY(0px) !important;
+        }
+        
+        /* Primary buttons in both sidebar and main area */
+        div.stButton > button[kind="primary"],
+        section[data-testid="stSidebar"] button[kind="primary"] {
+            background: linear-gradient(90deg, #3b82f6, #2563eb) !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-family: 'Outfit', sans-serif !important;
+            font-weight: 600 !important;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
+        }
+        div.stButton > button[kind="primary"]:hover,
+        section[data-testid="stSidebar"] button[kind="primary"]:hover {
+            background: linear-gradient(90deg, #60a5fa, #3b82f6) !important;
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4), 0 0 10px rgba(59, 130, 246, 0.2) !important;
+            transform: translateY(-1px) !important;
+        }
+        
+        /* Premium Input & Textarea Styling for Dark Mode */
+        div[data-testid="stTextInput"] div[data-baseweb="input"],
+        div[data-testid="stTextArea"] div[data-baseweb="textarea"],
+        div[data-testid="stTextArea"] textarea,
+        div[data-testid="stTextInput"] input {
+            background-color: #111827 !important;
+            border: 1px solid #1f2937 !important;
+            color: #f0f6fc !important;
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        div[data-testid="stTextInput"] input,
+        div[data-testid="stTextArea"] textarea {
+            color: #f0f6fc !important;
+            font-family: 'JetBrains Mono', monospace !important;
+            background-color: transparent !important;
+        }
+        
+        /* Input focus state */
+        div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within,
+        div[data-testid="stTextArea"] div[data-baseweb="textarea"]:focus-within {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 1px #3b82f6, 0 0 10px rgba(59, 130, 246, 0.15) !important;
+        }
+        
+        /* Premium Selectbox Styling for Dark Mode */
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="select"] {
+            background-color: #111827 !important;
+            border: 1px solid #1f2937 !important;
+            color: #f0f6fc !important;
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
+        }
+        div[data-baseweb="select"] * {
+            color: #f0f6fc !important;
+        }
+        div[data-baseweb="select"] > div:focus-within {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 1px #3b82f6, 0 0 10px rgba(59, 130, 246, 0.15) !important;
+        }
+        
+        /* Selectbox dropdown menu */
+        div[data-baseweb="popover"] ul {
+            background-color: #111827 !important;
+            border: 1px solid #1f2937 !important;
+            border-radius: 8px !important;
+            padding: 4px 0 !important;
+        }
+        div[data-baseweb="popover"] li {
+            background-color: #111827 !important;
+            color: #c9d1d9 !important;
+            transition: all 0.15s ease !important;
+        }
+        div[data-baseweb="popover"] li:hover {
+            background-color: #1f2937 !important;
+            color: #3b82f6 !important;
         }
         
         /* Glassmorphic Metrics */
