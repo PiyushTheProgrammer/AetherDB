@@ -315,14 +315,36 @@ with st.sidebar:
     st.markdown("<h2 style='color:#3b82f6; font-family: \"Outfit\", sans-serif; font-weight: 700; margin-top: 0;'>AetherDB Swarm Control</h2>", unsafe_allow_html=True)
     st.markdown("---")
     
+    # Onboarding Guide (Moved to sidebar, completely emoji-free)
+    with st.sidebar.expander("Quick Start & Swarm Agent Guide", expanded=True if not st.session_state.telemetry_history else False):
+        st.markdown(
+            """
+            ### Welcome to AetherDB
+            AetherDB is a self-healing database operations system that automatically intercepts slow queries, designs safe performance indexes to speed them up, audits them for safety, and requests human approval before deployment.
+            
+            ### How to Run the Demo:
+            1. Click **Start Telemetry Stream** below to begin generating database queries.
+            2. Watch queries flow in the **Telemetry Live Feed** on the right.
+            3. When a slow query (> 100ms) is intercepted, the stream will pause, and the **Swarm Decision Hub** will show the agents' logs.
+            4. Review their reasoning and click **Approve & Deploy Index** to speed up the database.
+            
+            ### Autonomous Swarm Agents:
+            * **Sentry Agent**: The watchdog. Constantly monitors query latency and flags performance anomalies.
+            * **Architect Agent**: The optimizer. Analyzes bottlenecks and designs tailored speed indexes.
+            * **Security Guard Agent**: The firewall. Audits index DDL commands to block harmful queries and locking operations.
+            """
+        )
+    
+    st.markdown("---")
+    
     # Live Stream Toggle
     st.markdown("### Telemetry Stream Control")
     if st.session_state.streaming_active:
-        if st.button("⏸️ Pause Telemetry Stream", use_container_width=True):
+        if st.button("Pause Telemetry Stream", use_container_width=True):
             st.session_state.streaming_active = False
             st.rerun()
     else:
-        if st.button("▶️ Start Telemetry Stream", type="primary", use_container_width=True):
+        if st.button("Start Telemetry Stream", type="primary", use_container_width=True):
             st.session_state.streaming_active = True
             st.rerun()
             
@@ -331,8 +353,8 @@ with st.sidebar:
     # Interface Preferences
     st.markdown("### Interface Preferences")
     theme_mode = st.selectbox(
-        "🎨 UI Theme",
-        ["Dark Mode 🌙", "Light Mode ☀️"],
+        "UI Theme",
+        ["Dark Mode", "Light Mode"],
         index=0 if st.session_state.theme == "Dark" else 1,
         help="Switch between Light and Dark interface styles."
     )
@@ -349,7 +371,7 @@ with st.sidebar:
     if indexes:
         for idx in indexes:
             st.markdown(
-                f"📎 **`{idx['name']}`**  \n"
+                f"**`{idx['name']}`**  \n"
                 f"Table: `{idx['table']}` | Columns: `{', '.join(idx['columns'])}`"
             )
     else:
@@ -361,7 +383,7 @@ with st.sidebar:
     st.markdown("### Simulated Schema Sizes")
     for tbl_name, tbl_info in db_instance.tables.items():
         st.markdown(
-            f"📊 **`{tbl_name}`**: {tbl_info['rows_count']:,} rows  \n"
+            f"**`{tbl_name}`**: {tbl_info['rows_count']:,} rows  \n"
             f"Columns: `{', '.join(tbl_info['columns'])}`"
         )
 
@@ -373,16 +395,14 @@ if st.session_state.theme == "Dark":
     pipeline_bg = "#111827"
     pipeline_border = "#1f2937"
     step_connector_idle = "#1f2937"
-    title_gradient_start = "#3b82f6"
-    title_gradient_end = "#60a5fa"
+    title_color = "#3b82f6"
 else:
     text_primary = "#0f172a"
     text_secondary = "#64748b"
     pipeline_bg = "#ffffff"
     pipeline_border = "#e2e8f0"
     step_connector_idle = "#e2e8f0"
-    title_gradient_start = "#2563eb"
-    title_gradient_end = "#3b82f6"
+    title_color = "#2563eb"
 
 col_logo, col_title = st.columns([1, 6], vertical_alignment="center")
 with col_logo:
@@ -390,7 +410,7 @@ with col_logo:
 with col_title:
     st.markdown(
         f"""
-        <h1 style='color:{text_primary}; font-family: "Outfit", sans-serif; font-size: 3rem; font-weight: 700; margin-top: 0; margin-bottom: 0; background: linear-gradient(90deg, {title_gradient_start}, {title_gradient_end}); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>
+        <h1 style='color:{title_color}; font-family: "Outfit", sans-serif; font-size: 3.2rem; font-weight: 700; margin-top: 0; margin-bottom: 0;'>
             AetherDB
         </h1>
         <p style='color:{text_secondary}; font-family: "Outfit", sans-serif; font-size: 1.25rem; font-weight: 400; margin-top: 5px; margin-bottom: 0;'>
@@ -400,75 +420,47 @@ with col_title:
         unsafe_allow_html=True
     )
 
-# 1. Welcome & Onboarding Card (Dumb-User Friendly)
-with st.expander("📖 Quick Start & Swarm Agent Guide (New here? Click to read!)", expanded=True if not st.session_state.telemetry_history else False):
-    st.markdown(
-        f"""
-        <div style="background-color: {pipeline_bg}; border: 1px solid {pipeline_border}; border-radius: 10px; padding: 15px; margin-bottom: 10px;">
-            <h3 style="margin-top: 0; color: {text_primary};">Welcome to AetherDB! 🚀</h3>
-            <p style="color: {text_secondary}; font-size: 0.95rem; line-height: 1.5; margin-bottom: 12px;">
-                AetherDB is an intelligent, self-healing database operations system. It automatically intercepts slow queries, 
-                designs safe performance indexes to speed them up, audits them for security, and asks for your approval.
-            </p>
-            <h4 style="color: {text_primary}; margin-bottom: 5px; margin-top: 0;">💡 How to run this Demo in 4 Steps:</h4>
-            <ol style="color: {text_secondary}; font-size: 0.9rem; margin-top: 0; padding-left: 20px; line-height: 1.5;">
-                <li>Click <b>▶️ Start Telemetry Stream</b> in the left sidebar. This starts generating real-world database queries.</li>
-                <li>Watch the queries flow in the <b>Telemetry Live Feed</b> on the right panel.</li>
-                <li>When a slow query (> 100ms) is intercepted, the stream will pause, and the <b>Swarm Decision Hub</b> will show the agents' reasoning.</li>
-                <li>Review their work and click <b>✅ Approve & Deploy Index</b> to instantly speed up the database.</li>
-            </ol>
-            <h4 style="color: {text_primary}; margin-bottom: 5px; margin-top: 10px;">🤖 Meet your Autonomous Swarm Agents:</h4>
-            <ul style="color: {text_secondary}; font-size: 0.9rem; margin-top: 0; padding-left: 20px; line-height: 1.5;">
-                <li>🚨 <b>Sentry Agent</b>: The watchdog. Constantly monitors database query latency and flags performance anomalies.</li>
-                <li>📐 <b>Architect Agent</b>: The optimizer. Analyzes the slow query execution bottleneck and proposes a tailored speed index.</li>
-                <li>🛡️ <b>Security Guard Agent</b>: The firewall. Audits the proposed indexing DDL against security skills to block harmful commands (like deleting tables) and locking operations.</li>
-            </ul>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-# 2. Visual Pipeline Tracker
-st.markdown(f"<h3 style='color:{title_gradient_start}; margin-top: 15px; font-family: \"Outfit\", sans-serif;'>Real-Time Agent Swarm Status</h3>", unsafe_allow_html=True)
+# 1. Visual Pipeline Tracker
+st.markdown(f"<h3 style='color:{title_color}; margin-top: 20px; font-family: \"Outfit\", sans-serif; font-weight: 600;'>Real-Time Agent Swarm Status</h3>", unsafe_allow_html=True)
 
 proposal = st.session_state.pending_proposal
 
 # Step configurations
 step_color_1 = "#10b981"
-status_text_1 = "Monitoring Latency 🟢"
+status_text_1 = "Monitoring Latency"
 
 if proposal:
     step_connector_1 = "#10b981"
     step_color_2 = "#10b981"
-    status_text_2 = "Proposing Index 🟢"
+    status_text_2 = "Proposing Index"
     
     # Run safety validation
     safety_report = st.session_state.swarm_security.validate_proposal(proposal)
     step_connector_2 = "#10b981"
     if safety_report["approved"]:
         step_color_3 = "#10b981"
-        status_text_3 = "Audit Passed 🟢"
+        status_text_3 = "Audit Passed"
         step_connector_3 = "#f59e0b"
         step_color_4 = "#f59e0b"
-        status_text_4 = "Decision Pending 🟡"
+        status_text_4 = "Decision Pending"
     else:
         step_color_3 = "#ef4444"
-        status_text_3 = "Blocked 🔴"
+        status_text_3 = "Blocked"
         step_connector_3 = step_connector_idle
         step_color_4 = "#64748b"
-        status_text_4 = "Idle ⚪"
+        status_text_4 = "Idle"
 else:
     step_connector_1 = step_connector_idle
     step_color_2 = "#64748b"
-    status_text_2 = "Idle ⚪"
+    status_text_2 = "Idle"
     
     step_connector_2 = step_connector_idle
     step_color_3 = "#64748b"
-    status_text_3 = "Idle ⚪"
+    status_text_3 = "Idle"
     
     step_connector_3 = step_connector_idle
     step_color_4 = "#64748b"
-    status_text_4 = "Idle ⚪"
+    status_text_4 = "Idle"
 
 # Render custom visual pipeline HTML
 st.markdown(
@@ -542,15 +534,16 @@ col_left, col_right = st.columns([7, 5])
 
 # ----------------- LEFT PANEL: SWARM ALERT & HITL ACTIONS -----------------
 with col_left:
-    st.markdown("<h3 style='color:#58a6ff;'>Swarm Decision Hub</h3>", unsafe_allow_html=True)
+    hub_title_color = "#3b82f6" if st.session_state.theme == "Dark" else "#2563eb"
+    st.markdown(f"<h3 style='color:{hub_title_color};'>Swarm Decision Hub</h3>", unsafe_allow_html=True)
     
     proposal = st.session_state.pending_proposal
     
     if proposal:
         st.markdown(
             f"<div class='card' style='border-color: #d29922;'>"
-            f"<span class='badge-alert'>🚨 ACTIVE SWARM TASK: {proposal['query_id']}</span>"
-            f"<h4 style='margin-top: 15px; color:#f0f6fc;'>Intercepted SQL Query:</h4>"
+            f"<span class='badge-alert'>ACTIVE SWARM TASK: {proposal['query_id']}</span>"
+            f"<h4 style='margin-top: 15px; color:{text_primary};'>Intercepted SQL Query:</h4>"
             f"<code>{proposal['original_query']}</code>"
             f"<p style='margin-top:10px; color:#da3633;'>Original Execution Latency: <b>{proposal['execution_time_ms']} ms</b></p>"
             f"</div>",
@@ -563,8 +556,8 @@ with col_left:
         # 1. Sentry Agent
         st.markdown(
             f"<div class='card'>"
-            f"<div class='agent-header'>🚨 SENTRY AGENT</div>"
-            f"<p style='color:#8b949e;'>Log monitor detected database latency breach ({proposal['execution_time_ms']}ms > 100ms threshold). "
+            f"<div class='agent-header'>SENTRY AGENT</div>"
+            f"<p style='color:{text_secondary};'>Log monitor detected database latency breach ({proposal['execution_time_ms']}ms > 100ms threshold). "
             f"Flagged query and dispatched to performance optimizer.</p>"
             f"</div>",
             unsafe_allow_html=True
@@ -573,11 +566,11 @@ with col_left:
         # 2. Architect Agent
         st.markdown(
             f"<div class='card'>"
-            f"<div class='agent-header'>📐 ARCHITECT AGENT</div>"
+            f"<div class='agent-header'>ARCHITECT AGENT</div>"
             f"<p><b>Bottleneck Detected:</b> {proposal['bottleneck']}</p>"
             f"<p><b>Proposed Indexing SQL:</b></p>"
             f"<code>{proposal['proposed_sql']}</code>"
-            f"<p style='margin-top: 10px; color:#8b949e;'><b>Technical Reason:</b> {proposal['reasoning']}</p>"
+            f"<p style='margin-top: 10px; color:{text_secondary};'><b>Technical Reason:</b> {proposal['reasoning']}</p>"
             f"</div>",
             unsafe_allow_html=True
         )
@@ -586,12 +579,16 @@ with col_left:
         # Validate safety on-the-fly
         safety_report = st.session_state.swarm_security.validate_proposal(proposal)
         
-        guard_status_color = "#58a6ff" if safety_report["approved"] else "#da3633"
-        guard_status_text = "APPROVED ✅" if safety_report["approved"] else "REJECTED ❌"
+        if st.session_state.theme == "Dark":
+            guard_status_color = "#58a6ff" if safety_report["approved"] else "#da3633"
+        else:
+            guard_status_color = "#2563eb" if safety_report["approved"] else "#dc2626"
+            
+        guard_status_text = "APPROVED" if safety_report["approved"] else "REJECTED"
         
         st.markdown(
             f"<div class='card' style='border-color: {guard_status_color};'>"
-            f"<div class='agent-header'>🛡️ SECURITY GUARD AGENT</div>"
+            f"<div class='agent-header'>SECURITY GUARD AGENT</div>"
             f"<p><b>Safety Audit Status:</b> <span style='color:{guard_status_color}; font-weight:bold;'>{guard_status_text}</span></p>"
             f"<p><b>Security Report:</b> {safety_report['reason']}</p>"
             f"</div>",
@@ -603,7 +600,7 @@ with col_left:
             st.markdown("#### Human-in-the-Loop Action Authorization")
             col_btn1, col_btn2 = st.columns(2)
             with col_btn1:
-                if st.button("✅ Approve & Deploy Index", type="primary", use_container_width=True):
+                if st.button("Approve & Deploy Index", type="primary", use_container_width=True):
                     # Execute the optimization index
                     result = db_instance.execute_ddl(proposal["proposed_sql"])
                     if result.get("success"):
@@ -616,7 +613,7 @@ with col_left:
                         st.error(result.get("error"))
                     st.rerun()
             with col_btn2:
-                if st.button("❌ Reject Optimization", use_container_width=True):
+                if st.button("Reject Optimization", use_container_width=True):
                     st.session_state.pending_proposal = None
                     st.toast("Optimization proposal discarded.")
                     time.sleep(0.5)
@@ -632,31 +629,31 @@ with col_left:
         
     # --- CHAOS ENGINEERING SANDBOX (Security Demonstration) ---
     st.markdown("---")
-    st.markdown("<h3 style='color:#58a6ff;'>Chaos Engineering Sandbox</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#8b949e;'>Simulate custom operations to test the Security Guard Agent's safety validation skill directly.</p>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color:{title_color};'>Chaos Engineering Sandbox</h3>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:{text_secondary};'>Simulate custom operations to test the Security Guard Agent's safety validation skill directly.</p>", unsafe_allow_html=True)
     
     # Initialize sandbox preset value in session state if not present
     if "sandbox_sql_val" not in st.session_state:
         st.session_state.sandbox_sql_val = "CREATE INDEX CONCURRENTLY idx_users_email ON users (email);"
         
-    st.markdown("💡 **1-Click Test Presets (Dumb User Friendly):**")
+    st.markdown("**1-Click Test Presets (Dumb User Friendly):**")
     col_p1, col_p2, col_p3 = st.columns(3)
     with col_p1:
-        if st.button("✅ Test Safe Index", help="Propose a safe, concurrent index creation", use_container_width=True):
+        if st.button("Test Safe Index", help="Propose a safe, concurrent index creation", use_container_width=True):
             st.session_state.sandbox_sql_val = "CREATE INDEX CONCURRENTLY idx_users_email ON users (email);"
             st.rerun()
     with col_p2:
-        if st.button("🚨 Test SQL Injection", help="Attempt to inject a destructive DROP TABLE command", use_container_width=True):
+        if st.button("Test SQL Injection", help="Attempt to inject a destructive DROP TABLE command", use_container_width=True):
             st.session_state.sandbox_sql_val = "CREATE INDEX CONCURRENTLY idx_users_email ON users (email); DROP TABLE transactions;"
             st.rerun()
     with col_p3:
-        if st.button("🔒 Test Table Lock", help="Attempt to create an index without the CONCURRENTLY keyword, which locks the database for writes", use_container_width=True):
+        if st.button("Test Table Lock", help="Attempt to create an index without the CONCURRENTLY keyword, which locks the database for writes", use_container_width=True):
             st.session_state.sandbox_sql_val = "CREATE INDEX idx_users_email ON users (email);"
             st.rerun()
             
     sandbox_sql = st.text_area("Type or edit SQL statement to evaluate:", value=st.session_state.sandbox_sql_val)
     
-    if st.button("🔒 Run Security Guard Audit", use_container_width=True):
+    if st.button("Run Security Guard Audit", use_container_width=True):
         mock_payload = {
             "query_id": "q_sandbox_test",
             "original_query": "SELECT * FROM users WHERE email = 'test@domain.com';",
@@ -669,13 +666,13 @@ with col_left:
         sandbox_report = st.session_state.swarm_security.validate_proposal(mock_payload)
         
         if sandbox_report["approved"]:
-            st.success(f"🛡️ **Security Guard Approved!**  \n{sandbox_report['reason']}")
+            st.success(f"**Security Guard Approved**  \n{sandbox_report['reason']}")
         else:
-            st.error(f"🚨 **Security Guard Blocked!**  \n**Reason:** {sandbox_report['reason']}  \n**Violation:** {sandbox_report['violation_details']}")
-
+            st.error(f"**Security Guard Blocked**  \n**Reason:** {sandbox_report['reason']}  \n**Violation:** {sandbox_report['violation_details']}")
+ 
 # ----------------- RIGHT PANEL: REAL-TIME TELEMETRY STREAM -----------------
 with col_right:
-    st.markdown("<h3 style='color:#58a6ff;'>Telemetry Live Feed</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color:{title_color};'>Telemetry Live Feed</h3>", unsafe_allow_html=True)
     
     # Telemetry Feed Display
     if st.session_state.telemetry_history:
@@ -695,11 +692,11 @@ with col_right:
             )
     else:
         st.info("Start the Telemetry Stream in the sidebar to begin receiving database query logs.")
-
+ 
 # ----------------- DYNAMIC CHARTING & PERFORMANCE TRACKING -----------------
 st.markdown("---")
-st.markdown("<h3 style='color:#58a6ff;'>Performance Optimization Analysis</h3>", unsafe_allow_html=True)
-
+st.markdown(f"<h3 style='color:{title_color};'>Performance Optimization Analysis</h3>", unsafe_allow_html=True)
+ 
 if len(st.session_state.telemetry_history) > 5:
     # Prepare historical chart data
     df_history = pd.DataFrame(st.session_state.telemetry_history)
@@ -712,24 +709,29 @@ if len(st.session_state.telemetry_history) > 5:
         'Time': 'first'
     }).reset_index()
     
+    chart_template = "plotly_dark" if st.session_state.theme == "Dark" else "plotly_white"
+    chart_bg = "#161b22" if st.session_state.theme == "Dark" else "#ffffff"
+    paper_bg = "#0b0e14" if st.session_state.theme == "Dark" else "#f8fafc"
+    line_color = "#3b82f6" if st.session_state.theme == "Dark" else "#2563eb"
+    
     fig = px.line(
         df_grouped,
         x='Time',
         y='execution_time_ms',
         title="Average Database Latency Trend (ms)",
         labels={'execution_time_ms': 'Average Execution Latency (ms)'},
-        template="plotly_dark"
+        template=chart_template
     )
-    fig.update_traces(line_color='#58a6ff', line_width=3)
+    fig.update_traces(line_color=line_color, line_width=3)
     fig.update_layout(
-        plot_bgcolor='#161b22',
-        paper_bgcolor='#0d1117',
+        plot_bgcolor=chart_bg,
+        paper_bgcolor=paper_bg,
         margin=dict(l=20, r=20, t=40, b=20)
     )
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.info("Additional query history needed to display performance analysis graphs.")
-
+ 
 # ----------------- TELEMETRY STREAMING EXECUTION LOOP -----------------
 if st.session_state.streaming_active:
     # Pull one telemetry log from the generator
@@ -749,7 +751,11 @@ if st.session_state.streaming_active:
         st.session_state.pending_proposal = proposal_payload
         # Temporarily pause stream so user can inspect and act on proposal
         st.session_state.streaming_active = False
-        st.toast("🚨 Slow query intercepted! Swarm optimization proposed.", icon="🚨")
+        st.toast("Slow query intercepted. Swarm optimization proposed.")
+        
+    # Trigger Streamlit rerun to continue live streaming
+    time.sleep(0.5)
+    st.rerun() proposed.", icon="🚨")
         
     # Trigger Streamlit rerun to continue live streaming
     time.sleep(0.5)
