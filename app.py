@@ -149,18 +149,26 @@ if st.session_state.theme == "Dark":
         div[data-testid="stTextArea"] div[data-baseweb="textarea"],
         div[data-testid="stTextArea"] textarea,
         div[data-testid="stTextInput"] input {
-            background-color: #111827 !important;
-            border: 1px solid #1f2937 !important;
-            color: #f0f6fc !important;
+            background-color: #161b22 !important;
+            border: 1px solid #30363d !important;
+            color: #ffffff !important;
             border-radius: 8px !important;
             transition: all 0.2s ease !important;
         }
         
         div[data-testid="stTextInput"] input,
         div[data-testid="stTextArea"] textarea {
-            color: #f0f6fc !important;
+            color: #ffffff !important;
             font-family: 'JetBrains Mono', monospace !important;
             background-color: transparent !important;
+        }
+        
+        /* Force high-contrast bright white text and solid dark-gray background for sidebar text inputs */
+        section[data-testid="stSidebar"] div[data-testid="stTextInput"] input,
+        section[data-testid="stSidebar"] div[data-testid="stTextInput"] div[data-baseweb="input"] {
+            color: #ffffff !important;
+            background-color: #161b22 !important;
+            border-color: #30363d !important;
         }
         
         /* Input focus state */
