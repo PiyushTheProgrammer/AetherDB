@@ -99,6 +99,11 @@ if st.session_state.theme == "Dark":
             border-radius: 10px !important;
         }
         
+        /* Hide Streamlit input instructions (Press Enter to apply) to prevent overlapping text */
+        div[data-testid="InputInstructions"] {
+            display: none !important;
+        }
+        
         /* Premium Button Styling for Dark Mode */
         /* Secondary / standard buttons in both sidebar and main area */
         div.stButton > button, 
@@ -125,10 +130,12 @@ if st.session_state.theme == "Dark":
             transform: translateY(0px) !important;
         }
         
-        /* Primary buttons in both sidebar and main area */
+        /* Primary buttons in both sidebar and main area (forcing pure high-contrast white text) */
         div.stButton > button[kind="primary"],
-        section[data-testid="stSidebar"] button[kind="primary"] {
-            background: linear-gradient(90deg, #3b82f6, #2563eb) !important;
+        section[data-testid="stSidebar"] button[kind="primary"],
+        div.stButton > button[kind="primary"] *,
+        section[data-testid="stSidebar"] button[kind="primary"] * {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
             color: #ffffff !important;
             border: none !important;
             border-radius: 8px !important;
@@ -138,9 +145,12 @@ if st.session_state.theme == "Dark":
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
         }
         div.stButton > button[kind="primary"]:hover,
-        section[data-testid="stSidebar"] button[kind="primary"]:hover {
-            background: linear-gradient(90deg, #60a5fa, #3b82f6) !important;
+        section[data-testid="stSidebar"] button[kind="primary"]:hover,
+        div.stButton > button[kind="primary"]:hover *,
+        section[data-testid="stSidebar"] button[kind="primary"]:hover * {
+            background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%) !important;
             box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4), 0 0 10px rgba(59, 130, 246, 0.2) !important;
+            color: #ffffff !important;
             transform: translateY(-1px) !important;
         }
         
