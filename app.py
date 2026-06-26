@@ -755,8 +755,4 @@ if st.session_state.streaming_active:
         
     # Trigger Streamlit rerun to continue live streaming
     time.sleep(0.5)
-    st.rerun() proposed.", icon="🚨")
-        
-    # Trigger Streamlit rerun to continue live streaming
-    time.sleep(0.5)
     st.rerun()
