@@ -47,17 +47,20 @@ An intelligent, self-healing database operations system designed for autonomous 
 - **Index Registry**: Queries the `pg_indexes` catalog table in real-time to keep track of all active indexes in the public schema.
 - **Non-Blocking Index Execution**: Executes approved indexing DDL commands directly on the live database in autocommit mode, supporting concurrent, non-locking operations.
 
-### 2. Manual Query Optimizer
-- Provide custom SQL statements to be optimized on your live database.
-- Runs a safe, real-time `EXPLAIN (FORMAT JSON)` statement on your database (ensuring zero locks, writes, or performance impact in production).
-- Automatically feeds the query planner tree into the Architect Agent to identify sequential scan bottlenecks and design an index optimization.
+### 2. Query Interceptor & Execution Console
+- Run any custom SQL statements on both simulated and connected live databases.
+- Proactively intercepts every query before execution and routes it through a multi-agent safety and performance gatekeeper:
+  - **Fast & Safe**: Runs automatically and displays structured results.
+  - **Slow & Safe**: Architect designs a concurrent, non-locking index. The operator can apply the optimization or execute the query slow.
+  - **Unsafe/Injection**: Blocks the query, showing the exact policy violation. Requires explicit Admin Bypass authorization to run.
 
 ### 3. Multi-Agent Swarm Logic
 - **Sentry Agent (`agents/sentry.py`)**: Continuously monitors incoming telemetry query logs and flags performance anomalies (queries exceeding 100ms).
 - **Architect Agent (`agents/architect.py`)**: Inspects query bottlenecks (e.g. sequential scans on unindexed tables) by calling database planner tools and constructs precise index DDL fixes.
-- **Security Guard Agent (`agents/security_guard.py`)**: Proactively audits both manual queries and proposed index DDLs against strict safety policy rules before execution.
+- **Security Guard Agent (`agents/security_guard.py`)**: Proactively audits both console queries and proposed index DDLs against strict safety policy rules before execution.
 
-### 4. Proactive Safety gatekeeper
+### 4. Proactive Safety Gatekeeper
+- **Unified Pre-execution Interception**: Checks query safety (stacked injections, blacklisted keywords) before the database adapter runs the query.
 - **Safety Policy Enforcement**: Guided by strict safety rules, the Security Guard blocks destructive commands (`DROP`, `DELETE`, `TRUNCATE`, `ALTER TABLE`, etc.), stacked query injections, and non-concurrent index creations.
 - **Autocommit Isolation**: Forces all live index DDLs to run concurrently (`CREATE INDEX CONCURRENTLY`), which prevents tables from being locked for writes in active environments.
 
@@ -65,7 +68,9 @@ An intelligent, self-healing database operations system designed for autonomous 
 - Clean, dark-mode and light-mode interfaces built with Streamlit.
 - Features a step-by-step reasoning inspector showing Sentry, Architect, and Security Guard logs.
 - Interactive Human-in-the-Loop decision pane to Approve or Reject optimizations.
-- Chaos Engineering Sandbox to test custom SQL statements against the Security Guard.
+- Query Interceptor Console to execute and analyze arbitrary queries on the fly.
+- Chaos Engineering Sandbox to test custom index DDL statements against the Security Guard.
+
 
 ---
 
