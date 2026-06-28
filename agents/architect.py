@@ -25,17 +25,27 @@ class ArchitectAgent:
         potential_fix = plan_analysis.get("potential_fix", "")
 
         # Formulate technical reasoning for the index creation
-        table_name = plan_tree.get("Relation Name", "unknown")
-        filter_cond = plan_tree.get("Filter", "none")
-        node_type = plan_tree.get("Node Type", "unknown")
+        def find_seq_scan(node: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+            if node.get("Node Type") == "Seq Scan":
+                return node
+            for child in node.get("Plans", []):
+                res = find_seq_scan(child)
+                if res:
+                    return res
+            return None
+
+        seq_scan_node = find_seq_scan(plan_tree) or plan_tree
+        table_name = seq_scan_node.get("Relation Name", "unknown")
+        filter_cond = seq_scan_node.get("Filter", "none")
+        node_type = seq_scan_node.get("Node Type", "unknown")
         
-        if node_type == "Seq Scan" and potential_fix:
+        if potential_fix:
             reasoning = (
                 f"The database planner is executing a Sequential Scan on table '{table_name}' "
                 f"matching filter conditions '{filter_cond}'. For a table of this size, "
                 f"this results in high CPU and disk I/O costs. Creating a B-Tree index covering the filter "
                 f"columns will allow the planner to perform an Index Scan instead, reducing cost from "
-                f"{plan_tree.get('Total Cost')} to less than 10.0."
+                f"{plan_tree.get('Total Cost', 'N/A')} to less than 10.0."
             )
         else:
             reasoning = "Query execution plan is already optimized or no index optimization is applicable."

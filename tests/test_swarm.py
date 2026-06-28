@@ -168,5 +168,34 @@ class TestSQLOptimizationSwarm(unittest.TestCase):
         self.assertEqual(post_explain["plan_tree"]["Index Name"], "idx_users_email")
         self.assertLess(post_explain["execution_time_ms"], 5.0)
 
+    def test_check_query_safety(self):
+        """
+        Verify that check_query_safety method correctly identifies safe vs unsafe queries.
+        """
+        # Safe queries
+        safe_q1 = "SELECT * FROM users WHERE email = 'test@example.com';"
+        safe_q2 = "SELECT count(*), status FROM orders GROUP BY status;"
+        
+        is_safe, err = self.security_guard.check_query_safety(safe_q1)
+        self.assertTrue(is_safe)
+        self.assertEqual(err, "")
+        
+        is_safe, err = self.security_guard.check_query_safety(safe_q2)
+        self.assertTrue(is_safe)
+        self.assertEqual(err, "")
+        
+        # Unsafe queries
+        unsafe_q1 = "DROP TABLE users;"
+        unsafe_q2 = "SELECT * FROM orders; DELETE FROM transactions;"
+        
+        is_safe, err = self.security_guard.check_query_safety(unsafe_q1)
+        self.assertFalse(is_safe)
+        self.assertIn("Prohibited SQL keyword", err)
+        
+        is_safe, err = self.security_guard.check_query_safety(unsafe_q2)
+        self.assertFalse(is_safe)
+        self.assertIn("Stacked queries", err)
+
+
 if __name__ == "__main__":
     unittest.main()

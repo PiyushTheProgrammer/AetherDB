@@ -66,6 +66,61 @@ class MockPostgreSQLDatabase:
             for name, val in self.active_indexes.items()
         ]
 
+    def get_active_queries(self) -> List[Dict[str, Any]]:
+        """Stub for mock database to match RealPostgreSQLDatabase interface."""
+        return []
+
+    def cancel_query(self, pid: int) -> bool:
+        """Stub for mock database to match RealPostgreSQLDatabase interface."""
+        return True
+
+    def execute_query(self, sql_query: str) -> Dict[str, Any]:
+        """Simulates query execution on mock database and returns structured results for SELECTs."""
+        sql_clean = sql_query.strip().lower()
+        if "select" in sql_clean:
+            parsed = self.parse_query_target(sql_query)
+            table = parsed["table"]
+            if table in self.tables:
+                columns = self.tables[table]["columns"]
+                import random
+                rows = []
+                for i in range(1, 6):
+                    row = []
+                    for col in columns:
+                        if col == "id":
+                            row.append(i)
+                        elif col == "email":
+                            row.append(f"user_{random.randint(100, 999)}@gmail.com")
+                        elif col == "created_at":
+                            row.append("2026-06-28 12:00:00")
+                        elif col == "status":
+                            row.append("active")
+                        elif col == "user_id":
+                            row.append(random.randint(1, 100))
+                        elif col == "total":
+                            row.append(round(random.uniform(10.0, 500.0), 2))
+                        elif col == "order_id":
+                            row.append(random.randint(1, 100))
+                        elif col == "amount":
+                            row.append(round(random.uniform(5.0, 200.0), 2))
+                        elif col == "payment_method":
+                            row.append(random.choice(["credit_card", "paypal", "apple_pay", "stripe"]))
+                        else:
+                            row.append("mock_val")
+                    rows.append(row)
+                return {
+                    "success": True,
+                    "is_select": True,
+                    "columns": columns,
+                    "rows": rows
+                }
+        return {
+            "success": True,
+            "is_select": False,
+            "message": "Query executed successfully on mock database (No-op)."
+        }
+
+
     def parse_query_target(self, query: str) -> Dict[str, Any]:
         """
         Extracts table and columns from simple SQL query templates
@@ -262,6 +317,79 @@ class RealPostgreSQLDatabase:
         # Enable autocommit so DDLs like CREATE INDEX CONCURRENTLY can execute
         self.conn.autocommit = True
         self.executed_optimizations: List[Dict[str, Any]] = []
+        
+        # Ensure our tables exist for the telemetry generator
+        self._ensure_tables_exist()
+
+    def _ensure_tables_exist(self):
+        """Checks if schema tables users, orders, transactions exist. If not, creates and seeds them."""
+        cursor = self.conn.cursor()
+        try:
+            # Check for users table
+            cursor.execute("SELECT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users');")
+            users_exists = cursor.fetchone()[0]
+            
+            # Check for orders table
+            cursor.execute("SELECT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'orders');")
+            orders_exists = cursor.fetchone()[0]
+            
+            # Check for transactions table
+            cursor.execute("SELECT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'transactions');")
+            transactions_exists = cursor.fetchone()[0]
+            
+            if not users_exists:
+                cursor.execute("""
+                    CREATE TABLE users (
+                        id SERIAL PRIMARY KEY,
+                        email VARCHAR(255) NOT NULL,
+                        created_at TIMESTAMP DEFAULT NOW(),
+                        status VARCHAR(50) DEFAULT 'active'
+                    );
+                """)
+                # Insert mock users in a single multi-row batch
+                values_str = ",".join(f"('user_{i}@gmail.com', 'active')" for i in range(1, 2001))
+                cursor.execute(f"INSERT INTO users (email, status) VALUES {values_str};")
+                
+            if not orders_exists:
+                cursor.execute("""
+                    CREATE TABLE orders (
+                        id SERIAL PRIMARY KEY,
+                        user_id INT,
+                        total NUMERIC(10, 2),
+                        created_at TIMESTAMP DEFAULT NOW(),
+                        status VARCHAR(50) DEFAULT 'pending'
+                    );
+                """)
+                # Insert mock orders in a single multi-row batch
+                values_str = ",".join(f"({i % 1500 + 1}, {round(i * 1.5, 2)}, 'pending')" for i in range(1, 4001))
+                cursor.execute(f"INSERT INTO orders (user_id, total, status) VALUES {values_str};")
+                
+            if not transactions_exists:
+                cursor.execute("""
+                    CREATE TABLE transactions (
+                        id SERIAL PRIMARY KEY,
+                        order_id INT,
+                        amount NUMERIC(10, 2),
+                        payment_method VARCHAR(50),
+                        created_at TIMESTAMP DEFAULT NOW()
+                    );
+                """)
+                # Insert mock transactions in a single multi-row batch
+                methods = ["credit_card", "paypal", "apple_pay", "stripe"]
+                values_str = ",".join(f"({i % 3500 + 1}, {round(i * 1.1, 2)}, '{methods[i % 4]}')" for i in range(1, 5001))
+                cursor.execute(f"INSERT INTO transactions (order_id, amount, payment_method) VALUES {values_str};")
+                
+            # If any table was created, run ANALYZE to update pg_stat_user_tables row counts immediately
+            if not (users_exists and orders_exists and transactions_exists):
+                cursor.execute("ANALYZE users; ANALYZE orders; ANALYZE transactions;")
+                
+            cursor.close()
+        except Exception as e:
+            if not cursor.closed:
+                cursor.close()
+            # Suppress/log database setup exceptions
+            print(f"Error checking/creating tables: {e}")
+
 
     def get_existing_indexes(self) -> List[Dict[str, Any]]:
         """Queries pg_indexes to fetch active indexes in the public schema."""
@@ -442,7 +570,7 @@ class RealPostgreSQLDatabase:
                 bottleneck = f"Sequential Scan on relation '{table}' due to missing index."
                 cols_str = ", ".join(columns)
                 potential_fix = f"CREATE INDEX CONCURRENTLY idx_{table}_{'_'.join(columns)} ON {table} ({cols_str});"
-                execution_time = 10.0 + (total_cost / 10.0)
+                execution_time = 150.0 + (total_cost / 10.0)
             else:
                 execution_time = 0.5 + (total_cost / 100.0)
                 
@@ -488,6 +616,84 @@ class RealPostgreSQLDatabase:
             return {
                 "success": False,
                 "error": f"Failed to execute DDL: {str(e)}"
+            }
+
+    def get_active_queries(self) -> List[Dict[str, Any]]:
+        """Queries pg_stat_activity to find currently running queries in public schema."""
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT pid, query, state, extract(epoch from (now() - query_start)) * 1000 AS duration_ms
+                FROM pg_stat_activity
+                WHERE state = 'active'
+                  AND query NOT LIKE '%pg_stat_activity%'
+                  AND query NOT LIKE '%pg_stat_statements%'
+                  AND query NOT LIKE '%SELECT EXISTS%'
+                  AND query NOT LIKE '%information_schema%'
+                  AND query != ''
+                  AND query IS NOT NULL
+                  AND usename != 'rdsadmin'
+                  AND pid != pg_backend_pid();
+            """)
+            rows = cursor.fetchall()
+            cursor.close()
+            
+            queries = []
+            for row in rows:
+                pid, query_text, state, duration_ms = row
+                queries.append({
+                    "pid": pid,
+                    "query": query_text,
+                    "state": state,
+                    "duration_ms": duration_ms or 0.0
+                })
+            return queries
+        except Exception as e:
+            if not cursor.closed:
+                cursor.close()
+            return []
+
+    def cancel_query(self, pid: int) -> bool:
+        """Cancels a running backend query using pg_cancel_backend."""
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute("SELECT pg_cancel_backend(%s);", (pid,))
+            result = cursor.fetchone()
+            cursor.close()
+            return result[0] if result else False
+        except Exception as e:
+            if not cursor.closed:
+                cursor.close()
+            return False
+
+    def execute_query(self, sql_query: str) -> Dict[str, Any]:
+        """Executes a query and returns columns and rows (safely limit to 100 rows)."""
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute(sql_query)
+            if cursor.description:
+                columns = [desc[0] for desc in cursor.description]
+                rows = cursor.fetchmany(100)
+                cursor.close()
+                return {
+                    "success": True,
+                    "is_select": True,
+                    "columns": columns,
+                    "rows": rows
+                }
+            else:
+                cursor.close()
+                return {
+                    "success": True,
+                    "is_select": False,
+                    "message": "Query executed successfully, no rows returned."
+                }
+        except Exception as e:
+            if not cursor.closed:
+                cursor.close()
+            return {
+                "success": False,
+                "error": str(e)
             }
 
     def close(self):

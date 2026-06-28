@@ -326,6 +326,48 @@ if st.session_state.theme == "Dark":
             color: #e5e7eb !important;
             border-radius: 6px;
         }
+        
+        /* Bulletproof overrides to force dark theme widgets and high-contrast text */
+        textarea, 
+        div[data-baseweb="textarea"], 
+        div[data-baseweb="textarea"] textarea,
+        .stTextArea textarea {
+            background-color: #161b22 !important;
+            color: #ffffff !important;
+            border: 1px solid #30363d !important;
+            border-radius: 8px !important;
+        }
+        
+        /* Subtitles and text legibility overrides in dark mode */
+        div[data-testid="stWidgetLabel"] p,
+        div[data-testid="stWidgetLabel"] label,
+        label,
+        span[data-testid="stWidgetLabel"],
+        .stWidgetLabel {
+            color: #f0f6fc !important; /* bright readable off-white for labels */
+            font-weight: 500 !important;
+            font-family: 'Outfit', sans-serif !important;
+        }
+        
+        div[data-testid="stMarkdownContainer"] strong,
+        div[data-testid="stMarkdownContainer"] b,
+        strong,
+        b {
+            color: #f0f6fc !important; /* bright readable bold markdown text */
+        }
+        
+        div[data-testid="stMarkdownContainer"] p,
+        .stMarkdown p {
+            color: #c9d1d9 !important; /* clear readable light gray for body text */
+        }
+        
+        /* Clean secondary button styling */
+        .stButton button,
+        div.stButton > button {
+            background-color: #161b22 !important;
+            color: #c9d1d9 !important;
+            border: 1px solid #30363d !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 else:
@@ -535,6 +577,17 @@ if "streaming_active" not in st.session_state:
     st.session_state.streaming_active = False
 if "db_instance" not in st.session_state:
     st.session_state.db_instance = db_instance
+if "console_status" not in st.session_state:
+    st.session_state.console_status = None
+if "console_query" not in st.session_state:
+    st.session_state.console_query = ""
+if "console_error" not in st.session_state:
+    st.session_state.console_error = ""
+if "console_proposal" not in st.session_state:
+    st.session_state.console_proposal = None
+if "console_result" not in st.session_state:
+    st.session_state.console_result = None
+
 
 # Initialize Swarm components (Cached in session)
 if "swarm_sentry" not in st.session_state:
@@ -637,17 +690,51 @@ with st.sidebar:
     
     # Live Stream Toggle
     st.markdown("### Telemetry Stream Control")
-    if isinstance(st.session_state.db_instance, RealPostgreSQLDatabase):
-        st.info("Telemetry stream is only available for the simulated database. Use the Manual Query Optimizer on the main dashboard to optimize your live database queries.")
+    if st.session_state.streaming_active:
+        if st.button("Pause Telemetry Stream", use_container_width=True):
+            st.session_state.streaming_active = False
+            st.rerun()
     else:
-        if st.session_state.streaming_active:
-            if st.button("Pause Telemetry Stream", use_container_width=True):
-                st.session_state.streaming_active = False
-                st.rerun()
-        else:
-            if st.button("Start Telemetry Stream", type="primary", use_container_width=True):
-                st.session_state.streaming_active = True
-                st.rerun()
+        if st.button("Start Telemetry Stream", type="primary", use_container_width=True):
+            st.session_state.streaming_active = True
+            st.rerun()
+            
+    # Live Traffic Simulator for Real Database Interception Demo
+    if isinstance(st.session_state.db_instance, RealPostgreSQLDatabase):
+        st.markdown("### Live Traffic Simulator")
+        st.caption("Simulate active database queries to test query interception, termination, and safety auditing.")
+        
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            if st.button("Trigger Slow Query", use_container_width=True, help="Executes SELECT pg_sleep(5); in the background."):
+                import threading
+                def run_slow():
+                    try:
+                        import psycopg2
+                        conn = psycopg2.connect(st.session_state.db_instance.connection_uri)
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT pg_sleep(5);")
+                        cursor.close()
+                        conn.close()
+                    except:
+                        pass
+                threading.Thread(target=run_slow, daemon=True).start()
+                st.toast("Background slow query triggered.")
+        with col_t2:
+            if st.button("Trigger Unsafe Query", use_container_width=True, help="Executes an active query containing unsafe keywords."):
+                import threading
+                def run_unsafe():
+                    try:
+                        import psycopg2
+                        conn = psycopg2.connect(st.session_state.db_instance.connection_uri)
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT * FROM users WHERE email = 'drop table users';")
+                        cursor.close()
+                        conn.close()
+                    except:
+                        pass
+                threading.Thread(target=run_unsafe, daemon=True).start()
+                st.toast("Background unsafe query triggered.")
             
     st.markdown("---")
     
@@ -843,12 +930,43 @@ with col_left:
     hub_title_color = "#3b82f6" if st.session_state.theme == "Dark" else "#2563eb"
     st.markdown(f"<h3 style='color:{hub_title_color};'>Swarm Decision Hub</h3>", unsafe_allow_html=True)
     
+    # Render Override Results if available
+    if "override_results" in st.session_state and st.session_state.override_results:
+        res = st.session_state.override_results
+        st.markdown("### ⚡ Admin Override Query Execution Results")
+        st.info(f"Executed SQL: `{res['query']}`")
+        
+        db_res = res["result"]
+        if db_res.get("success"):
+            if db_res.get("is_select"):
+                cols = db_res.get("columns", [])
+                rows = db_res.get("rows", [])
+                if rows:
+                    import pandas as pd
+                    df = pd.DataFrame(rows, columns=cols)
+                    st.dataframe(df, use_container_width=True)
+                else:
+                    st.success("Query returned 0 rows.")
+            else:
+                st.success(db_res.get("message", "Query executed successfully."))
+        else:
+            st.error(f"Execution failed: {db_res.get('error')}")
+            
+        if st.button("Clear Results"):
+            st.session_state.override_results = None
+            st.rerun()
+            
     proposal = st.session_state.pending_proposal
     
     if proposal:
+        was_cancelled = proposal.get("was_cancelled", False)
+        status_badge = "ACTIVE SWARM TASK: " + proposal['query_id']
+        if was_cancelled:
+            status_badge += " (BLOCKED & CANCELLED ON SERVER)"
+            
         st.markdown(
             f"<div class='card' style='border-color: #d29922;'>"
-            f"<span class='badge-alert'>ACTIVE SWARM TASK: {proposal['query_id']}</span>"
+            f"<span class='badge-alert'>{status_badge}</span>"
             f"<h4 style='margin-top: 15px; color:{text_primary};'>Intercepted SQL Query:</h4>"
             f"<code>{proposal['original_query']}</code>"
             f"<p style='margin-top:10px; color:#da3633;'>Original Execution Latency: <b>{proposal['execution_time_ms']} ms</b></p>"
@@ -924,60 +1042,210 @@ with col_left:
                     st.toast("Optimization proposal discarded.")
                     time.sleep(0.5)
                     st.rerun()
+            
+            # Admin Bypass Override
+            st.markdown("---")
+            st.markdown("#### Admin Bypass Override")
+            if was_cancelled:
+                st.warning("This active query was terminated on the server to prevent database lag. You can force-execute it using the override button below.")
+            if st.button("Admin Override: Force Execute Original Query", use_container_width=True):
+                with st.spinner("Executing query on live database..."):
+                    result = st.session_state.db_instance.execute_query(proposal["original_query"])
+                    st.session_state.override_results = {
+                        "query": proposal["original_query"],
+                        "result": result
+                    }
+                    st.session_state.pending_proposal = None
+                    st.rerun()
         else:
             st.markdown("#### Safety Clearance Rejected")
             st.error("The Security Guard Agent has blocked this recommendation. Optimization cannot be authorized.")
+            
+            st.markdown("#### Admin Bypass Override")
+            st.warning("You can override the Security Guard block and force-run this query on the database using the Admin Bypass.")
+            if st.button("Admin Override: Force Execute Original Query", type="primary", use_container_width=True):
+                with st.spinner("Executing query on live database..."):
+                    result = st.session_state.db_instance.execute_query(proposal["original_query"])
+                    st.session_state.override_results = {
+                        "query": proposal["original_query"],
+                        "result": result
+                    }
+                    st.session_state.pending_proposal = None
+                    st.rerun()
+            
             if st.button("Discard Blocked Task", use_container_width=True):
                 st.session_state.pending_proposal = None
                 st.rerun()
     else:
         st.info("System healthy. No slow queries currently queued for swarm analysis.")
         
-        # ----------------- MANUAL QUERY OPTIMIZER (For Live PostgreSQL) -----------------
-        if isinstance(st.session_state.db_instance, RealPostgreSQLDatabase):
-            st.markdown("---")
-            st.markdown(f"<h3 style='color:{title_color};'>Manual Query Optimizer</h3>", unsafe_allow_html=True)
-            st.markdown(f"<p style='color:{text_secondary};'>Analyze any SQL query on your connected live database. AetherDB will run a safe EXPLAIN plan, identify sequential scans, and propose a non-blocking index.</p>", unsafe_allow_html=True)
+        # ----------------- QUERY INTERCEPTOR & EXECUTION CONSOLE -----------------
+        st.markdown("---")
+        st.markdown(f"<h3 style='color:{title_color};'>Query Interceptor & Execution Console</h3>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:{text_secondary};'>Proactively intercept, monitor, optimize, and safely execute SQL queries on the active database.</p>", unsafe_allow_html=True)
+        
+        console_query = st.text_area(
+            "Enter SQL Query to Execute",
+            placeholder="SELECT * FROM users WHERE email = 'user_123@gmail.com';",
+            height=120,
+            key="console_query_input"
+        )
+        
+        col_run1, col_run2 = st.columns([3, 1])
+        with col_run1:
+            run_clicked = st.button("Intercept & Run Query", type="primary", use_container_width=True)
+        with col_run2:
+            clear_clicked = st.button("Reset Console", use_container_width=True)
             
-            manual_query = st.text_area(
-                "Enter SQL Query to optimize",
-                placeholder="SELECT * FROM table_name WHERE column_name = 'value';",
-                height=120,
-                key="manual_query_input"
-            )
-            
-            if st.button("Analyze & Optimize Query", type="primary", use_container_width=True):
-                if not manual_query.strip():
-                    st.warning("Please enter a SQL query to analyze.")
+        if clear_clicked:
+            st.session_state.console_status = None
+            st.session_state.console_query = ""
+            st.session_state.console_error = ""
+            st.session_state.console_proposal = None
+            st.session_state.console_result = None
+            st.rerun()
+
+        if run_clicked:
+            if not console_query.strip():
+                st.warning("Please enter a SQL query to execute.")
+            else:
+                # 1. Proactive Safety Audit
+                is_safe, safety_err = st.session_state.swarm_security.check_query_safety(console_query)
+                if not is_safe:
+                    st.session_state.console_status = "BLOCKED"
+                    st.session_state.console_query = console_query
+                    st.session_state.console_error = safety_err
+                    st.session_state.console_proposal = None
+                    st.session_state.console_result = None
+                    st.rerun()
                 else:
-                    # 1. Proactive Safety Audit
-                    is_safe, safety_err = st.session_state.swarm_security._check_query_safety(manual_query, is_proposal=False)
-                    if not is_safe:
-                        st.error(f"Security Guard blocked this query: {safety_err}")
-                    else:
-                        with st.spinner("Analyzing query execution plan..."):
-                            # 2. Run explain plan via Architect Agent
+                    # 2. Performance audit (EXPLAIN plan)
+                    with st.spinner("Sentry and Architect agents analyzing query performance..."):
+                        explain_res = st.session_state.db_instance.explain_query(console_query)
+                        execution_time = explain_res.get("execution_time_ms", 0.0)
+                        
+                        if execution_time > 100.0:
+                            # Propose optimization
                             alert_payload = {
-                                "alert_id": "alert_manual",
-                                "query_id": f"q_manual_{int(time.time())}",
-                                "sql": manual_query,
-                                "execution_time_ms": 250.0,
+                                "alert_id": "alert_console",
+                                "query_id": f"q_console_{int(time.time())}",
+                                "sql": console_query,
+                                "execution_time_ms": execution_time,
                                 "timestamp": time.time(),
                                 "severity": "WARNING",
                                 "status": "Awaiting Swarm Analysis"
                             }
-                            
                             proposal_payload = st.session_state.swarm_architect.analyze_slow_query(
                                 alert_payload,
                                 db_instance_override=st.session_state.db_instance
                             )
-                            
-                            if not proposal_payload.get("proposed_sql"):
-                                st.info("No performance bottleneck detected. The query is already optimized using existing indexes or does not benefit from index optimization.")
-                            else:
-                                st.session_state.pending_proposal = proposal_payload
-                                st.toast("Bottleneck detected. Swarm optimization proposed!")
+                            st.session_state.console_status = "SLOW"
+                            st.session_state.console_query = console_query
+                            st.session_state.console_proposal = proposal_payload
+                            st.session_state.console_error = ""
+                            st.session_state.console_result = None
+                            st.rerun()
+                        else:
+                            # Execute immediately
+                            with st.spinner("Executing query..."):
+                                result = st.session_state.db_instance.execute_query(console_query)
+                                st.session_state.console_status = "EXECUTED"
+                                st.session_state.console_query = console_query
+                                st.session_state.console_result = result
+                                st.session_state.console_proposal = None
+                                st.session_state.console_error = ""
                                 st.rerun()
+
+        # Display Console State/Results
+        if st.session_state.console_status == "BLOCKED":
+            st.markdown(
+                f"<div class='card' style='border-color: #ef4444;'>"
+                f"<span class='badge-slow'>PROACTIVELY BLOCKED BY SECURITY GUARD</span>"
+                f"<h4 style='margin-top: 15px; color:{text_primary};'>SQL Threat Intercepted:</h4>"
+                f"<code>{st.session_state.console_query}</code>"
+                f"<p style='margin-top: 10px; color:#ef4444;'><b>Security Policy Violation:</b> {st.session_state.console_error}</p>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            
+            st.markdown("#### System Admin Options")
+            st.warning("This query has been blocked to prevent destructive behavior. Do you want to authorize and execute it anyway?")
+            col_ad1, col_ad2 = st.columns(2)
+            with col_ad1:
+                if st.button("Admin Bypass: Force Execute Query", type="primary", use_container_width=True):
+                    with st.spinner("Admin bypassing guard. Executing query..."):
+                        result = st.session_state.db_instance.execute_query(st.session_state.console_query)
+                        st.session_state.console_status = "EXECUTED"
+                        st.session_state.console_result = result
+                        st.rerun()
+            with col_ad2:
+                if st.button("Discard Unsafe Request", use_container_width=True):
+                    st.session_state.console_status = None
+                    st.session_state.console_query = ""
+                    st.session_state.console_error = ""
+                    st.rerun()
+                    
+        elif st.session_state.console_status == "SLOW":
+            prop = st.session_state.console_proposal
+            st.markdown(
+                f"<div class='card' style='border-color: #f59e0b;'>"
+                f"<span class='badge-alert'>PERFORMANCE BREACH INTERCEPTED</span>"
+                f"<h4 style='margin-top: 15px; color:{text_primary};'>Proposed Index Optimization:</h4>"
+                f"<code>{prop['proposed_sql']}</code>"
+                f"<p style='margin-top: 10px;'><b>Bottleneck:</b> {prop['bottleneck']}</p>"
+                f"<p style='color:{text_secondary};'><b>Reasoning:</b> {prop['reasoning']}</p>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            
+            st.markdown("#### Execution Choices")
+            col_ch1, col_ch2, col_ch3 = st.columns(3)
+            with col_ch1:
+                if st.button("Apply Optimization & Execute", type="primary", use_container_width=True):
+                    with st.spinner("Applying index..."):
+                        idx_res = st.session_state.db_instance.execute_ddl(prop["proposed_sql"])
+                        if idx_res.get("success"):
+                            st.success(idx_res.get("message"))
+                            with st.spinner("Executing original query (now optimized!)..."):
+                                result = st.session_state.db_instance.execute_query(st.session_state.console_query)
+                                st.session_state.console_status = "EXECUTED"
+                                st.session_state.console_result = result
+                                st.rerun()
+                        else:
+                            st.error(idx_res.get("error"))
+            with col_ch2:
+                if st.button("Execute Anyway (Slow)", use_container_width=True):
+                    with st.spinner("Executing slow query..."):
+                        result = st.session_state.db_instance.execute_query(st.session_state.console_query)
+                        st.session_state.console_status = "EXECUTED"
+                        st.session_state.console_result = result
+                        st.rerun()
+            with col_ch3:
+                if st.button("Cancel & Discard", use_container_width=True):
+                    st.session_state.console_status = None
+                    st.session_state.console_query = ""
+                    st.session_state.console_proposal = None
+                    st.rerun()
+                    
+        elif st.session_state.console_status == "EXECUTED":
+            res = st.session_state.console_result
+            st.markdown(f"#### ⚡ Query Execution Results")
+            st.info(f"Query: `{st.session_state.console_query}`")
+            
+            if res.get("success"):
+                if res.get("is_select"):
+                    cols = res.get("columns", [])
+                    rows = res.get("rows", [])
+                    if rows:
+                        df = pd.DataFrame(rows, columns=cols)
+                        st.dataframe(df, use_container_width=True)
+                    else:
+                        st.success("Query completed successfully, returned 0 rows.")
+                else:
+                    st.success(res.get("message", "Query completed successfully."))
+            else:
+                st.error(f"Execution Error: {res.get('error')}")
+
         
     # --- CHAOS ENGINEERING SANDBOX (Security Demonstration) ---
     st.markdown("---")
@@ -1086,28 +1354,150 @@ else:
  
 # ----------------- TELEMETRY STREAMING EXECUTION LOOP -----------------
 if st.session_state.streaming_active:
-    # Pull one telemetry log from the generator
-    log_entry = next(st.session_state.telemetry_generator.generate_query_stream())
-    
-    # Record in history
-    st.session_state.telemetry_history.append(log_entry)
-    
-    # Check with Sentry Agent
-    sentry_alert = st.session_state.swarm_sentry.analyze_log_entry(log_entry)
-    
-    # If a slow query is intercepted, and we do not have an active proposal queued, trigger the swarm
-    if sentry_alert and not st.session_state.pending_proposal:
-        # Pass to Architect Agent
-        proposal_payload = st.session_state.swarm_architect.analyze_slow_query(
-            sentry_alert,
-            db_instance_override=st.session_state.db_instance
-        )
-        # Store as pending in session
-        st.session_state.pending_proposal = proposal_payload
-        # Temporarily pause stream so user can inspect and act on proposal
-        st.session_state.streaming_active = False
-        st.toast("Slow query intercepted. Swarm optimization proposed.")
+    if isinstance(st.session_state.db_instance, RealPostgreSQLDatabase):
+        # Poll for actual running queries on the database
+        active_queries = st.session_state.db_instance.get_active_queries()
         
-    # Trigger Streamlit rerun to continue live streaming
-    time.sleep(0.5)
-    st.rerun()
+        for q in active_queries:
+            sql = q["query"]
+            pid = q["pid"]
+            duration = q["duration_ms"]
+            
+            # Check safety first
+            is_safe, safety_err = st.session_state.swarm_security.check_query_safety(sql)
+            
+            if not is_safe:
+                # Proactively cancel / block the query immediately
+                cancel_success = st.session_state.db_instance.cancel_query(pid)
+                
+                log_entry = {
+                    "query_id": f"q_live_{pid}_{int(time.time())}",
+                    "timestamp": time.time(),
+                    "sql": sql,
+                    "execution_time_ms": duration,
+                    "plan": {},
+                    "bottleneck": "Security policy violation.",
+                    "potential_fix": "",
+                    "pid": pid,
+                    "status": "BLOCKED"
+                }
+                st.session_state.telemetry_history.append(log_entry)
+                
+                if not st.session_state.pending_proposal:
+                    proposal_payload = {
+                        "query_id": log_entry["query_id"],
+                        "original_query": sql,
+                        "execution_time_ms": duration,
+                        "proposed_sql": "",
+                        "bottleneck": "Unsafe query executing on database.",
+                        "reasoning": f"Security Guard intercepted and terminated query: {safety_err}",
+                        "status": "Blocked by Security Guard",
+                        "pid": pid,
+                        "was_cancelled": cancel_success,
+                        "is_security_violation": True
+                    }
+                    st.session_state.pending_proposal = proposal_payload
+                    st.session_state.streaming_active = False
+                    st.toast(f"Security Alert: Unsafe query intercepted and cancelled (PID: {pid})!")
+                break
+            else:
+                # Analyze query via EXPLAIN to get plans
+                analysis = st.session_state.db_instance.explain_query(sql)
+                
+                log_entry = {
+                    "query_id": f"q_live_{pid}_{int(time.time())}",
+                    "timestamp": time.time(),
+                    "sql": sql,
+                    "execution_time_ms": duration if duration > 0 else analysis["execution_time_ms"],
+                    "plan": analysis["plan_tree"],
+                    "bottleneck": analysis["bottleneck_detected"],
+                    "potential_fix": analysis["potential_fix"],
+                    "pid": pid,
+                    "status": "SLOW" if (duration > 100.0 or analysis["execution_time_ms"] > 100.0) else "OK"
+                }
+                
+                # Add to history
+                st.session_state.telemetry_history.append(log_entry)
+                
+                # Check with Sentry Agent
+                sentry_alert = st.session_state.swarm_sentry.analyze_log_entry(log_entry)
+                
+                if sentry_alert and not st.session_state.pending_proposal:
+                    # Swarm analyzes this slow query
+                    proposal_payload = st.session_state.swarm_architect.analyze_slow_query(
+                        sentry_alert,
+                        db_instance_override=st.session_state.db_instance
+                    )
+                    
+                    # Check security clearance on the fly
+                    safety_report = st.session_state.swarm_security.validate_proposal(proposal_payload)
+                    
+                    # Cancel/block query immediately on the server backend
+                    cancel_success = st.session_state.db_instance.cancel_query(pid)
+                    
+                    # Store the details
+                    proposal_payload["pid"] = pid
+                    proposal_payload["was_cancelled"] = cancel_success
+                    
+                    st.session_state.pending_proposal = proposal_payload
+                    st.session_state.streaming_active = False
+                    
+                    if cancel_success:
+                        st.toast(f"Active slow query intercepted and BLOCKED (PID: {pid}). Swarm analysis active.")
+                    else:
+                        st.toast(f"Active slow query intercepted (PID: {pid}). Swarm analysis active.")
+                    break
+        
+        # Trigger Streamlit rerun to continue live monitoring
+        time.sleep(0.5)
+        st.rerun()
+    else:
+        # Pull one telemetry log from the generator
+        log_entry = next(st.session_state.telemetry_generator.generate_query_stream(st.session_state.db_instance))
+        
+        # Check safety first
+        is_safe, safety_err = st.session_state.swarm_security.check_query_safety(log_entry["sql"])
+        
+        if not is_safe:
+            log_entry["status"] = "BLOCKED"
+            # Record in history
+            st.session_state.telemetry_history.append(log_entry)
+            
+            if not st.session_state.pending_proposal:
+                proposal_payload = {
+                    "query_id": log_entry["query_id"],
+                    "original_query": log_entry["sql"],
+                    "execution_time_ms": log_entry["execution_time_ms"],
+                    "proposed_sql": "",
+                    "bottleneck": "Security policy violation.",
+                    "reasoning": f"Security Guard blocked the query: {safety_err}",
+                    "status": "Blocked by Security Guard",
+                    "is_security_violation": True
+                }
+                st.session_state.pending_proposal = proposal_payload
+                st.session_state.streaming_active = False
+                st.toast("Security Alert: Unsafe query intercepted and blocked!")
+        else:
+            # Record in history
+            st.session_state.telemetry_history.append(log_entry)
+            
+            # Check with Sentry Agent
+            sentry_alert = st.session_state.swarm_sentry.analyze_log_entry(log_entry)
+            
+            # If a slow query is intercepted, and we do not have an active proposal queued, trigger the swarm
+            if sentry_alert and not st.session_state.pending_proposal:
+                # Pass to Architect Agent
+                proposal_payload = st.session_state.swarm_architect.analyze_slow_query(
+                    sentry_alert,
+                    db_instance_override=st.session_state.db_instance
+                )
+                # Store as pending in session
+                st.session_state.pending_proposal = proposal_payload
+                # Temporarily pause stream so user can inspect and act on proposal
+                st.session_state.streaming_active = False
+                st.toast("Slow query intercepted. Swarm optimization proposed.")
+            
+        # Trigger Streamlit rerun to continue live streaming
+        time.sleep(0.5)
+        st.rerun()
+

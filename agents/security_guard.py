@@ -112,3 +112,10 @@ class SecurityGuardAgent:
                 return False, "Unsafe ALTER TABLE operation detected (dropping columns or renaming tables is forbidden)."
 
         return True, ""
+
+    def check_query_safety(self, sql: str) -> Tuple[bool, str]:
+        """
+        Public method to evaluate raw SQL query safety.
+        """
+        return self._check_query_safety(sql, is_proposal=False)
+
